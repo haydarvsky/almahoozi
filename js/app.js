@@ -551,27 +551,26 @@
         setTimeout(function () { window.print(); }, 60);
       }
       function shareImage(i) {
-        /* بطاقة PNG بألوان الموقع وخط القراءة: النص مضبوط الطرفين بأرقام حواشيه، ثم التعليق تحته. */
+        /* بطاقات ستوري 9:16 (1080×1920) بألوان الموقع وخط القراءة: النص مضبوط الطرفين بأرقام حواشيه
+           ثم التعليق. الحديث الطويل يتوزّع على عدة بطاقات مرقّمة يُكتب في كلٍّ منها «يتبع». */
         var blk = vol.blocks[i], s = meta.sections[sectionOf(meta, i)];
-        var W = 1400, M = 70, PAD = 64, X1 = W - M - PAD, X0 = M + PAD, TW = X1 - X0;
+        var W = 1080, H = 1920, M = 54, PAD = 46, X1 = W - M - PAD, X0 = M + PAD, TW = X1 - X0;
+        var TOP = 440, BOTTOM = 1610, FS = 38, LH = 78, NS = 27, NLH = 54;      // البطاقة داخل المنطقة الآمنة للستوري
         var fam = (getComputedStyle(document.documentElement).getPropertyValue('--read-font') || 'serif').trim();
         var raw = blockText(blk), noteIds = [], m, re = /(\d+)/g;
         while ((m = re.exec(raw))) noteIds.push(+m[1]);
         var clean = function (t) { return settings.tashkeel ? t : stripTashkeel(t); };
-        var long = raw.length + noteIds.reduce(function (a, id) { return a + vol.notes[id].length; }, 0);
-        var FS = long > 2600 ? 32 : long > 1400 ? 36 : 42, LH = Math.round(FS * 2.1), NS = Math.round(FS * 0.72), NLH = Math.round(NS * 2.05);
-        var C = { bg: '#f6f1e6', card: '#fffdf8', ink: '#1c2a27', ink2: '#44524d', green: '#0f4a42', deep: '#0a322d', gold: '#a8834a', goldSoft: '#d9c59c', quote: '#0d5b4c', line: '#e2d9c5', cream: '#f1dfb4' };
+        var C = { bg: '#f6f1e6', card: '#fffdf8', ink: '#1c2a27', ink2: '#44524d', green: '#0f4a42', deep: '#0a322d', gold: '#a8834a', goldSoft: '#d9c59c', quote: '#0d5b4c', line: '#e2d9c5' };
         var GC = { s: '#1d7a55', k: '#24808f', h: '#4a68b5', q: '#a7751f', m: '#6d7a2a', r: '#8a7460', d: '#b4473a', o: '#7a857f' };
-        toast('جارٍ تجهيز الصورة…');
+        toast('جارٍ تجهيز الصور…');
         var logo = new Image();
         Promise.all([document.fonts.load('700 ' + FS + 'px ' + fam, 'بسم'), document.fonts.load(FS + 'px ' + fam, 'بسم'),
           new Promise(function (res) { logo.onload = res; logo.onerror = res; logo.src = 'assets/name.svg'; })]).then(function () {
-          var cv = document.createElement('canvas'), ctx = cv.getContext('2d');
+          var mc = document.createElement('canvas').getContext('2d');
           var font = function (size, bold) { return (bold ? '700 ' : '') + size + 'px ' + fam; };
-          // يقسم النص كلماتٍ، ويحفظ مع كل كلمة أرقام حواشيها ولونها
           function words(text, size, bold, numbered) {
             var out = [], inQ = false, n = 0;
-            ctx.font = font(size, bold);
+            mc.font = font(size, bold);
             text.split(/\s+/).forEach(function (tok) {
               if (!tok) return;
               var marks = [];
@@ -581,8 +580,8 @@
               if (/^ـ+$/.test(w)) w = '–';              // الشرطة المكتوبة تطويلاً
               if (w.indexOf('«') >= 0) inQ = true;
               var mw = 0;
-              if (marks.length) { ctx.font = font(Math.round(size * 0.5), true); mw = marks.reduce(function (a, k) { return a + ctx.measureText(String(k)).width + size * 0.34; }, 0) + size * 0.08; ctx.font = font(size, bold); }
-              if (w || marks.length) out.push({ t: w, w: w ? ctx.measureText(w).width : 0, marks: marks, mw: mw, q: inQ });
+              if (marks.length) { mc.font = font(Math.round(size * 0.5), true); mw = marks.reduce(function (a, k) { return a + mc.measureText(String(k)).width + size * 0.34; }, 0) + size * 0.08; mc.font = font(size, bold); }
+              if (w || marks.length) out.push({ t: w, w: w ? mc.measureText(w).width : 0, marks: marks, mw: mw, q: inQ });
               if (w.indexOf('»') >= 0) inQ = false;
             });
             return out;
@@ -597,108 +596,158 @@
             if (cur.length) lines.push({ ws: cur, w: cw, last: true });
             return lines;
           }
-          function drawLines(lines, xr, y0, width, size, lh, bold, color) {
-            var sp = size * 0.3;
-            lines.forEach(function (ln, k) {
-              var gap = sp, x = xr, y = y0 + k * lh;
-              if (!ln.last && ln.ws.length > 1) gap = sp + Math.min((width - ln.w) / (ln.ws.length - 1), size * 0.9);   // ضبط الطرفين
-              ln.ws.forEach(function (wd) {
-                ctx.font = font(size, bold); ctx.textAlign = 'right'; ctx.direction = 'rtl';
-                ctx.fillStyle = wd.q ? C.quote : color;
-                if (wd.t) ctx.fillText(wd.t, x, y);
-                x -= wd.w;
-                if (wd.marks.length) {
-                  var ms = Math.round(size * 0.5); x -= size * 0.08;
-                  wd.marks.forEach(function (num) {
-                    ctx.font = font(ms, true); ctx.direction = 'ltr'; ctx.textAlign = 'center';
-                    var bw = ctx.measureText(String(num)).width + size * 0.26, bx = x - bw - size * 0.04, by = y - size * 0.86;
-                    ctx.fillStyle = 'rgba(168,131,74,.16)'; roundRect(ctx, bx, by, bw, ms * 1.3, ms * 0.35); ctx.fill();
-                    ctx.fillStyle = C.gold; ctx.fillText(String(num), bx + bw / 2, by + ms * 1.02);
-                    x -= bw + size * 0.08;
-                  });
-                }
-                x -= gap;
-              });
+          function drawLine(ctx, ln, xr, y, width, size, bold, color) {
+            var sp = size * 0.3, gap = sp, x = xr;
+            if (!ln.last && ln.ws.length > 1) gap = sp + Math.min((width - ln.w) / (ln.ws.length - 1), size * 0.9);   // ضبط الطرفين
+            ln.ws.forEach(function (wd) {
+              ctx.font = font(size, bold); ctx.textAlign = 'right'; ctx.direction = 'rtl';
+              ctx.fillStyle = wd.q ? C.quote : color;
+              if (wd.t) ctx.fillText(wd.t, x, y);
+              x -= wd.w;
+              if (wd.marks.length) {
+                var ms = Math.round(size * 0.5); x -= size * 0.08;
+                wd.marks.forEach(function (num) {
+                  ctx.font = font(ms, true); ctx.direction = 'ltr'; ctx.textAlign = 'center';
+                  var bw = ctx.measureText(String(num)).width + size * 0.26, bx = x - bw - size * 0.04, by = y - size * 0.86;
+                  ctx.fillStyle = 'rgba(168,131,74,.16)'; roundRect(ctx, bx, by, bw, ms * 1.3, ms * 0.35); ctx.fill();
+                  ctx.fillStyle = C.gold; ctx.fillText(String(num), bx + bw / 2, by + ms * 1.02);
+                  x -= bw + size * 0.08;
+                });
+              }
+              x -= gap;
             });
           }
-          // —— التخطيط ——
-          var bodyLines = wrap(words(raw, FS, false, true), TW, FS);
-          var notes = noteIds.map(function (id, k) {
-            var paras = stripLinks(vol.notes[id]).split('\n').map(function (ln) {
-              var sanad = /^\s*و?سنده\s/.test(stripTashkeel(ln));
-              return { sanad: sanad, lines: wrap(words(ln, NS, sanad, false), TW - NS * 2.2, NS) };
-            });
-            return { n: k + 1, paras: paras, h: paras.reduce(function (a, p) { return a + p.lines.length * NLH; }, 0) + NS * 0.7 };
+          // —— صفوف المحتوى: كل صفّ يعرف ارتفاعه وكيف يرسم نفسه ——
+          var rows = [];
+          wrap(words(raw, FS, false, true), TW, FS).forEach(function (ln) {
+            rows.push({ h: LH, draw: function (ctx, y) { drawLine(ctx, ln, X1, y + FS * 1.28, TW, FS, false, C.ink); } });
           });
-          var HEAD = 250, y = HEAD + 58;
-          var metaY = y; y += 74;                                   // سطر الرقم والحكم
-          var bodyY = y + FS; y += bodyLines.length * LH + 18;
-          var notesY = 0;
-          if (notes.length) { y += 34; notesY = y; y += 70; notes.forEach(function (nt) { nt.y = y; y += nt.h; }); }
-          var cardBottom = y + 30, H = cardBottom + 150;
-          cv.width = W; cv.height = H;
-          // —— الرسم ——
-          ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
-          var g = ctx.createLinearGradient(0, 0, 0, HEAD + 90); g.addColorStop(0, C.deep); g.addColorStop(1, C.green);
-          ctx.fillStyle = g; ctx.fillRect(0, 0, W, HEAD + 90);
-          // نقش البتلات الخافت كما في الموقع
-          ctx.save(); ctx.strokeStyle = 'rgba(217,197,156,.13)'; ctx.lineWidth = 2.2;
-          for (var py = 14; py < HEAD + 80; py += 88) for (var px = 10; px < W; px += 88) {
-            ctx.save(); ctx.translate(px, py); ctx.beginPath(); ctx.moveTo(22, 8); ctx.bezierCurveTo(31, 11, 35, 17, 34, 26); ctx.bezierCurveTo(25, 28, 18, 24, 16, 16); ctx.bezierCurveTo(16, 12, 18, 9, 22, 8); ctx.stroke(); ctx.restore();
+          if (noteIds.length) {
+            rows.push({ h: 96, keep: true, draw: function (ctx, y) {
+              ctx.strokeStyle = C.line; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(X0, y + 30); ctx.lineTo(X1, y + 30); ctx.stroke();
+              ctx.fillStyle = C.gold; ctx.beginPath(); ctx.arc(W / 2, y + 30, 5, 0, Math.PI * 2); ctx.fill();
+              ctx.direction = 'rtl'; ctx.textAlign = 'right'; ctx.font = font(25, true); ctx.fillStyle = C.gold; ctx.fillText('الحواشي والتخريج', X1, y + 76);
+            } });
+            noteIds.forEach(function (id, k) {
+              var first = true, IND = NS * 2.1;
+              stripLinks(vol.notes[id]).split('\n').forEach(function (para) {
+                var sanad = /^\s*و?سنده\s/.test(stripTashkeel(para));
+                wrap(words(para, NS, sanad, false), TW - IND, NS).forEach(function (ln) {
+                  var badge = first; first = false;
+                  rows.push({ h: NLH, draw: function (ctx, y) {
+                    if (badge) {
+                      var bs = NS * 1.2;
+                      ctx.fillStyle = C.gold; roundRect(ctx, X1 - bs, y + NLH * 0.56 - bs * 0.6, bs, bs, bs * 0.3); ctx.fill();
+                      ctx.fillStyle = '#fff'; ctx.font = font(Math.round(NS * 0.7), true); ctx.direction = 'ltr'; ctx.textAlign = 'center'; ctx.fillText(String(k + 1), X1 - bs / 2, y + NLH * 0.56 + bs * 0.2);
+                    }
+                    drawLine(ctx, ln, X1 - IND, y + NLH * 0.74, TW - IND, NS, sanad, sanad ? C.green : C.ink2);
+                  } });
+                });
+              });
+              rows.push({ h: 14, gap: true, draw: function () {} });
+            });
           }
-          ctx.restore();
-          if (logo.naturalWidth) {
-            var lw = 560, lhh = lw * 58.58 / 299.26, tmp = document.createElement('canvas'); tmp.width = lw * 2; tmp.height = Math.ceil(lhh * 2);
-            var tc = tmp.getContext('2d'); tc.drawImage(logo, 0, 0, tmp.width, tmp.height); tc.globalCompositeOperation = 'source-in'; tc.fillStyle = '#e3cd9a'; tc.fillRect(0, 0, tmp.width, tmp.height);
-            ctx.drawImage(tmp, (W - lw) / 2, 52, lw, lhh);
+          // —— التقسيم على بطاقات ——
+          var HEADROW = 92, CONT = 70, CAP = BOTTOM - TOP - HEADROW - 40;       // ما يتّسع له متن البطاقة
+          // توزيع متوازن: أقل عدد من البطاقات، ثم أصغر حدٍّ يحققه فلا تبقى للأخيرة أسطرٌ يتيمة
+          function paginate(limit) {
+            var out = [], cur = [], used = 0;
+            rows.forEach(function (r, k) {
+              var need = r.h + (r.keep && rows[k + 1] ? rows[k + 1].h : 0);
+              if (cur.length && used + need > limit) { out.push(cur); cur = []; used = 0; if (r.gap) return; }
+              cur.push(r); used += r.h;
+            });
+            if (cur.length) out.push(cur);
+            return out;
           }
-          ctx.direction = 'rtl'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(244,236,217,.82)'; ctx.font = font(28);
-          ctx.fillText([b.title, meta.name, s.a, s.n ? 'الباب ' + s.n : ''].filter(Boolean).join('  ·  '), W / 2, 212, W - M * 2);
-          // البطاقة
-          ctx.save(); ctx.shadowColor = 'rgba(40,30,10,.16)'; ctx.shadowBlur = 40; ctx.shadowOffsetY = 12;
-          ctx.fillStyle = C.card; roundRect(ctx, M, HEAD, W - M * 2, cardBottom - HEAD, 34); ctx.fill(); ctx.restore();
-          ctx.strokeStyle = C.goldSoft; ctx.lineWidth = 1.5; roundRect(ctx, M, HEAD, W - M * 2, cardBottom - HEAD, 34); ctx.stroke();
-          // رقم الحديث والحكم
-          var bx = X1;
-          if (blk[0] === 'h') {
-            ctx.font = font(27, true); ctx.direction = 'ltr';
-            var t1 = String(blk[1]), w1 = ctx.measureText(t1).width + 44;
-            ctx.fillStyle = C.green; roundRect(ctx, bx - w1, metaY - 6, w1, 48, 12); ctx.fill();
-            ctx.fillStyle = '#f4ecd9'; ctx.textAlign = 'center'; ctx.fillText(t1, bx - w1 / 2, metaY + 28);
-            bx -= w1 + 16;
-            ctx.direction = 'rtl'; ctx.font = font(24); ctx.fillStyle = '#7a857f'; ctx.textAlign = 'right'; ctx.fillText('ح ' + blk[2], bx, metaY + 27); bx -= ctx.measureText('ح ' + blk[2]).width + 18;
-            if (blk[4]) {
-              ctx.font = font(24, true); var w2 = ctx.measureText(blk[4]).width + 40;
-              ctx.fillStyle = GC[blk[5]] || GC.o; roundRect(ctx, bx - w2, metaY - 2, w2, 42, 21); ctx.fill();
-              ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText(blk[4], bx - w2 / 2, metaY + 27);
+          var totalH = rows.reduce(function (x, r) { return x + r.h; }, 0);
+          var pages = totalH <= CAP ? [rows] : paginate(CAP - CONT);
+          if (pages.length > 1) {
+            for (var lim = totalH / pages.length; lim < CAP - CONT; lim += NLH / 2) {
+              var tryP = paginate(lim);
+              if (tryP.length === pages.length) { pages = tryP; break; }
             }
           }
-          drawLines(bodyLines, X1, bodyY, TW, FS, LH, false, C.ink);
-          // التعليق
-          if (notes.length) {
-            ctx.strokeStyle = C.line; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(X0, notesY); ctx.lineTo(X1, notesY); ctx.stroke();
-            ctx.fillStyle = C.gold; ctx.beginPath(); ctx.arc(W / 2, notesY, 5, 0, Math.PI * 2); ctx.fill();
-            ctx.direction = 'rtl'; ctx.textAlign = 'right'; ctx.font = font(26, true); ctx.fillStyle = C.gold; ctx.fillText('الحواشي والتخريج', X1, notesY + 46);
-            notes.forEach(function (nt) {
-              var bs = NS * 1.25;
-              ctx.fillStyle = C.gold; roundRect(ctx, X1 - bs, nt.y + NLH * 0.5 - bs * 0.8, bs, bs, bs * 0.3); ctx.fill();
-              ctx.fillStyle = '#fff'; ctx.font = font(Math.round(NS * 0.7), true); ctx.direction = 'ltr'; ctx.textAlign = 'center'; ctx.fillText(String(nt.n), X1 - bs / 2, nt.y + NLH * 0.5 + bs * 0.02);
-              var yy = nt.y + NLH * 0.62;
-              nt.paras.forEach(function (p) { drawLines(p.lines, X1 - NS * 2.2, yy, TW - NS * 2.2, NS, NLH, p.sanad, p.sanad ? C.green : C.ink2); yy += p.lines.length * NLH; });
-            });
+          var total = pages.length;
+          var blobs = [];
+          function render(pi) {
+            var cv = document.createElement('canvas'), ctx = cv.getContext('2d'); cv.width = W; cv.height = H;
+            var content = pages[pi].reduce(function (a, r) { return a + r.h; }, 0), more = pi < total - 1;
+            var cardH = HEADROW + content + 40 + (more ? CONT : 0);
+            var top = Math.max(TOP, Math.round((TOP + BOTTOM - cardH) / 2));          // البطاقة تتوسّط المنطقة الآمنة
+            // الخلفية والترويسة
+            ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
+            var g = ctx.createLinearGradient(0, 0, 0, top + 120); g.addColorStop(0, C.deep); g.addColorStop(1, C.green);
+            ctx.fillStyle = g; ctx.fillRect(0, 0, W, top + 120);
+            ctx.save(); ctx.strokeStyle = 'rgba(217,197,156,.13)'; ctx.lineWidth = 2.2;
+            for (var py = 14; py < top + 110; py += 88) for (var px = 10; px < W; px += 88) {
+              ctx.save(); ctx.translate(px, py); ctx.beginPath(); ctx.moveTo(22, 8); ctx.bezierCurveTo(31, 11, 35, 17, 34, 26); ctx.bezierCurveTo(25, 28, 18, 24, 16, 16); ctx.bezierCurveTo(16, 12, 18, 9, 22, 8); ctx.stroke(); ctx.restore();
+            }
+            ctx.restore();
+            if (logo.naturalWidth) {
+              var lw = 600, lhh = lw * 58.58 / 299.26, tmp = document.createElement('canvas'); tmp.width = lw * 2; tmp.height = Math.ceil(lhh * 2);
+              var tc = tmp.getContext('2d'); tc.drawImage(logo, 0, 0, tmp.width, tmp.height); tc.globalCompositeOperation = 'source-in'; tc.fillStyle = '#e3cd9a'; tc.fillRect(0, 0, tmp.width, tmp.height);
+              ctx.drawImage(tmp, (W - lw) / 2, top - 218, lw, lhh);
+            }
+            ctx.direction = 'rtl'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(244,236,217,.85)'; ctx.font = font(27);
+            ctx.fillText([b.title, meta.name, s.a, s.n ? 'الباب ' + s.n : ''].filter(Boolean).join('  ·  '), W / 2, top - 46, W - M * 2);
+            // البطاقة
+            ctx.save(); ctx.shadowColor = 'rgba(40,30,10,.18)'; ctx.shadowBlur = 44; ctx.shadowOffsetY = 14;
+            ctx.fillStyle = C.card; roundRect(ctx, M, top, W - M * 2, cardH, 36); ctx.fill(); ctx.restore();
+            ctx.strokeStyle = C.goldSoft; ctx.lineWidth = 1.5; roundRect(ctx, M, top, W - M * 2, cardH, 36); ctx.stroke();
+            // صفّ الرأس: رقم الحديث، الحكم أو «تتمة»، وترقيم البطاقات
+            var bx = X1, my = top + 30;
+            if (blk[0] === 'h') {
+              ctx.font = font(27, true); ctx.direction = 'ltr';
+              var t1 = String(blk[1]), w1 = ctx.measureText(t1).width + 44;
+              ctx.fillStyle = C.green; roundRect(ctx, bx - w1, my, w1, 48, 12); ctx.fill();
+              ctx.fillStyle = '#f4ecd9'; ctx.textAlign = 'center'; ctx.fillText(t1, bx - w1 / 2, my + 34);
+              bx -= w1 + 16;
+            }
+            ctx.direction = 'rtl';
+            if (pi > 0) { ctx.font = font(25, true); ctx.fillStyle = C.gold; ctx.textAlign = 'right'; ctx.fillText('تتمة', bx, my + 33); }
+            else if (blk[4]) {
+              ctx.font = font(24, true); var w2 = ctx.measureText(blk[4]).width + 40;
+              ctx.fillStyle = GC[blk[5]] || GC.o; roundRect(ctx, bx - w2, my + 3, w2, 42, 21); ctx.fill();
+              ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText(blk[4], bx - w2 / 2, my + 32);
+            }
+            if (total > 1) {
+              ctx.font = font(24, true); ctx.direction = 'ltr'; ctx.textAlign = 'left'; ctx.fillStyle = '#7a857f';
+              ctx.fillText((pi + 1) + ' / ' + total, X0, my + 33);
+            }
+            var y = top + HEADROW;
+            pages[pi].forEach(function (r) { r.draw(ctx, y); y += r.h; });
+            if (more) {
+              ctx.direction = 'rtl'; ctx.font = font(26, true); ctx.textAlign = 'left'; ctx.fillStyle = C.gold;
+              ctx.fillText('يتبع  ‹', X0, top + cardH - 34);
+              ctx.strokeStyle = C.line; ctx.lineWidth = 1.5; ctx.setLineDash([6, 8]); ctx.beginPath(); ctx.moveTo(X0 + 110, top + cardH - 42); ctx.lineTo(X1, top + cardH - 42); ctx.stroke(); ctx.setLineDash([]);
+            }
+            // التذييل: اسم الكتاب والمحقق (بلا رابط)
+            var fy = Math.min(top + cardH + 62, 1690);
+            ctx.direction = 'rtl'; ctx.textAlign = 'center'; ctx.fillStyle = C.green; ctx.font = font(26, true);
+            ctx.fillText(b.full, W / 2, fy, W - M * 2);
+            ctx.fillStyle = C.gold; ctx.font = font(23);
+            ctx.fillText(b.role + ' سماحة الشيخ أحمد الماحوزي', W / 2, fy + 40);
+            return new Promise(function (res) { cv.toBlob(function (bl) { blobs[pi] = bl; res(); }, 'image/png'); });
           }
-          // التذييل
-          ctx.direction = 'rtl'; ctx.textAlign = 'center'; ctx.fillStyle = C.green; ctx.font = font(27, true);
-          ctx.fillText(b.full, W / 2, cardBottom + 58, W - M * 2);
-          ctx.fillStyle = C.gold; ctx.font = font(24);
-          ctx.fillText(b.role + ' سماحة الشيخ أحمد الماحوزي', W / 2, cardBottom + 98);
-          ctx.fillStyle = '#9aa39d'; ctx.font = '20px sans-serif'; ctx.direction = 'ltr';
-          ctx.fillText((location.host + location.pathname).replace(/\/$/, '') + (blk[0] === 'h' ? '/#/h/' + blk[1] : ''), W / 2, cardBottom + 132);
-          cv.toBlob(function (blob) {
-            var name = 'wasail-' + (blk[0] === 'h' ? blk[1] : 'v' + v + '-' + i) + '.png';
-            var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove();
-            setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000); toast('حُمّلت الصورة PNG');
-          }, 'image/png');
+          var chain = Promise.resolve();
+          pages.forEach(function (_, pi) { chain = chain.then(function () { return render(pi); }); });
+          return chain.then(function () {
+            var base = 'wasail-' + (blk[0] === 'h' ? blk[1] : 'v' + v + '-' + i);
+            var files = blobs.map(function (bl, k) { return new File([bl], base + (total > 1 ? '-' + (k + 1) : '') + '.png', { type: 'image/png' }); });
+            var mobile = /Mobi|Android|iPhone|iPad/.test(navigator.userAgent);
+            if (mobile && total > 1 && navigator.canShare && navigator.canShare({ files: files })) {
+              // الجوال لا ينزّل عدة ملفات دفعة واحدة: تُحفظ من قائمة المشاركة
+              return navigator.share({ files: files }).catch(function () { /* أُلغيت */ });
+            }
+            files.forEach(function (f, k) {
+              setTimeout(function () {
+                var a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click(); a.remove();
+                setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+              }, k * 350);
+            });
+            toast(total > 1 ? 'حُمّلت ' + total + ' صور PNG' : 'حُمّلت الصورة PNG');
+          });
         }).catch(function () { toast('تعذّر تجهيز الصورة'); });
       }
       function roundRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
