@@ -46,6 +46,7 @@
     copy: '<svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>',
     image: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="m4 18 5.5-5 3.5 3 3-2.5 4 3.5"/></svg>',
     print: '<svg viewBox="0 0 24 24"><path d="M7 8V3h10v5M7 17H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="7" y="14" width="10" height="7" rx="1"/></svg>',
+    share: '<svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="m8.3 10.7 7.4-4.3M8.3 13.3l7.4 4.3"/></svg>',
     link: '<svg viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>',
     notes: '<svg viewBox="0 0 24 24"><path d="M5 4h14v12l-4 4H5z"/><path d="M15 20v-4h4M8 9h8M8 13h5"/></svg>',
     list: '<svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>',
@@ -433,7 +434,7 @@
         if (t === 'h') {
           var g = blk[5] ? '<a class="grade g-' + blk[5] + '" href="#/search?grade=' + blk[5] + '" title="حكم السند في حاشية المحقق">' + escH(blk[4]) + '</a>' : '';
           return '<article class="hadith"' + attr + '><header><span class="hnum" title="الرقم العام">' + blk[1] + '</span><span class="hloc">' + blk[2] + '</span>' + g +
-            '<span class="acts"><button data-act="copy" title="نسخ الحديث مع العزو">' + ICON.copy + '</button><button data-act="copyn" title="نسخ مع الحواشي">' + ICON.notes + '</button><button data-act="link" title="نسخ رابط الحديث">' + ICON.link + '</button><button data-act="img" title="تحميل الحديث مع تعليقه صورةً PNG">' + ICON.image + '</button><button data-act="pdf" title="طباعة الحديث أو حفظه PDF">' + ICON.print + '</button></span></header>' +
+            '<span class="acts"><button data-act="copy" title="نسخ الحديث مع العزو">' + ICON.copy + '</button><button data-act="copyn" title="نسخ مع الحواشي">' + ICON.notes + '</button><button data-act="link" title="نسخ رابط الحديث">' + ICON.link + '</button><button data-act="img" title="تحميل الحديث مع تعليقه صورةً PNG">' + ICON.image + '</button><button data-act="share" title="مشاركة الحديث صورةً إلى التطبيقات">' + ICON.share + '</button></span></header>' +
             '<p class="txt">' + body + '</p>' + inl + '</article>';
         }
         if (t === 'b') return '<header class="bab"' + attr + '><span class="bab-n">الباب ' + blk[1] + '</span><h3 class="txt">' + body + '</h3><button class="bab-pdf" data-act="pdfbab" title="طباعة الباب كاملاً أو حفظه PDF">' + ICON.print + '<span>PDF الباب</span></button></header>' + inl;
@@ -550,7 +551,7 @@
         window.addEventListener('afterprint', done);
         setTimeout(function () { window.print(); }, 60);
       }
-      function shareImage(i) {
+      function shareImage(i, share) {
         /* بطاقات ستوري 9:16 (1080×1920) بألوان الموقع وخط القراءة: النص مضبوط الطرفين بأرقام حواشيه
            ثم التعليق. الحديث الطويل يتوزّع على عدة بطاقات مرقّمة يُكتب في كلٍّ منها «يتبع». */
         var blk = vol.blocks[i], s = meta.sections[sectionOf(meta, i)];
@@ -735,18 +736,24 @@
           return chain.then(function () {
             var base = 'wasail-' + (blk[0] === 'h' ? blk[1] : 'v' + v + '-' + i);
             var files = blobs.map(function (bl, k) { return new File([bl], base + (total > 1 ? '-' + (k + 1) : '') + '.png', { type: 'image/png' }); });
-            var mobile = /Mobi|Android|iPhone|iPad/.test(navigator.userAgent);
-            if (mobile && total > 1 && navigator.canShare && navigator.canShare({ files: files })) {
-              // الجوال لا ينزّل عدة ملفات دفعة واحدة: تُحفظ من قائمة المشاركة
-              return navigator.share({ files: files }).catch(function () { /* أُلغيت */ });
+            var download = function (msg) {
+              files.forEach(function (f, k) {
+                setTimeout(function () {
+                  var a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click(); a.remove();
+                  setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+                }, k * 350);
+              });
+              toast(msg || (total > 1 ? 'حُمّلت ' + total + ' صور PNG' : 'حُمّلت الصورة PNG'));
+            };
+            if (!share) return download();
+            // المشاركة المباشرة إلى التطبيقات (واتساب، إنستغرام، تلغرام…) عبر قائمة النظام
+            if (navigator.canShare && navigator.canShare({ files: files })) {
+              return navigator.share({ files: files }).catch(function (e) {
+                if (e && e.name === 'AbortError') return;          // أغلق المستخدم القائمة
+                download('تعذّرت المشاركة، فحُمّلت الصور');
+              });
             }
-            files.forEach(function (f, k) {
-              setTimeout(function () {
-                var a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click(); a.remove();
-                setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
-              }, k * 350);
-            });
-            toast(total > 1 ? 'حُمّلت ' + total + ' صور PNG' : 'حُمّلت الصورة PNG');
+            download('المشاركة غير مدعومة في هذا المتصفح، فحُمّلت الصور');
           });
         }).catch(function () { toast('تعذّر تجهيز الصورة'); });
       }
@@ -759,7 +766,7 @@
           if (act.dataset.act === 'copy') copy(plainOf(i, false), 'نُسخ الحديث مع العزو');
           else if (act.dataset.act === 'copyn') copy(plainOf(i, true), 'نُسخ الحديث مع حواشيه');
           else if (act.dataset.act === 'img') shareImage(i);
-          else if (act.dataset.act === 'pdf') printBlocks([i], 'الحديث ' + vol.blocks[i][1]);
+          else if (act.dataset.act === 'share') shareImage(i, true);
           else if (act.dataset.act === 'pdfbab') { var si = sectionOf(meta, i), se = sectionEnd(meta, si, vol), arr = []; for (var x = meta.sections[si].s; x < se; x++) arr.push(x); printBlocks(arr, 'الباب ' + vol.blocks[i][1]); }
           else copy(location.origin + location.pathname + '#/h/' + vol.blocks[i][1], 'نُسخ رابط الحديث');
           return;
