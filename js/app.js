@@ -433,7 +433,7 @@
         if (t === 'h') {
           var g = blk[5] ? '<a class="grade g-' + blk[5] + '" href="#/search?grade=' + blk[5] + '" title="حكم السند في حاشية المحقق">' + escH(blk[4]) + '</a>' : '';
           return '<article class="hadith"' + attr + '><header><span class="hnum" title="الرقم العام">' + blk[1] + '</span><span class="hloc">' + blk[2] + '</span>' + g +
-            '<span class="acts"><button data-act="copy" title="نسخ الحديث مع العزو">' + ICON.copy + '</button><button data-act="copyn" title="نسخ مع الحواشي">' + ICON.notes + '</button><button data-act="link" title="نسخ رابط الحديث">' + ICON.link + '</button><button data-act="img" title="حفظ الحديث صورةً للمشاركة">' + ICON.image + '</button><button data-act="pdf" title="طباعة الحديث أو حفظه PDF">' + ICON.print + '</button></span></header>' +
+            '<span class="acts"><button data-act="copy" title="نسخ الحديث مع العزو">' + ICON.copy + '</button><button data-act="copyn" title="نسخ مع الحواشي">' + ICON.notes + '</button><button data-act="link" title="نسخ رابط الحديث">' + ICON.link + '</button><button data-act="img" title="تحميل الحديث مع تعليقه صورةً PNG">' + ICON.image + '</button><button data-act="pdf" title="طباعة الحديث أو حفظه PDF">' + ICON.print + '</button></span></header>' +
             '<p class="txt">' + body + '</p>' + inl + '</article>';
         }
         if (t === 'b') return '<header class="bab"' + attr + '><span class="bab-n">الباب ' + blk[1] + '</span><h3 class="txt">' + body + '</h3><button class="bab-pdf" data-act="pdfbab" title="طباعة الباب كاملاً أو حفظه PDF">' + ICON.print + '<span>PDF الباب</span></button></header>' + inl;
@@ -551,58 +551,155 @@
         setTimeout(function () { window.print(); }, 60);
       }
       function shareImage(i) {
-        var blk = vol.blocks[i], W = 1080, pad = 84, s = meta.sections[sectionOf(meta, i)];
-        var body = stripMarks(blockText(blk)); if (!settings.tashkeel) body = stripTashkeel(body);
-        var size = body.length > 1400 ? 30 : body.length > 800 ? 34 : body.length > 380 ? 40 : 46, lh = size * 2.05;
-        var fam = getComputedStyle(document.documentElement).getPropertyValue('--read-font') || 'serif';
+        /* بطاقة PNG بألوان الموقع وخط القراءة: النص مضبوط الطرفين بأرقام حواشيه، ثم التعليق تحته. */
+        var blk = vol.blocks[i], s = meta.sections[sectionOf(meta, i)];
+        var W = 1400, M = 70, PAD = 64, X1 = W - M - PAD, X0 = M + PAD, TW = X1 - X0;
+        var fam = (getComputedStyle(document.documentElement).getPropertyValue('--read-font') || 'serif').trim();
+        var raw = blockText(blk), noteIds = [], m, re = /(\d+)/g;
+        while ((m = re.exec(raw))) noteIds.push(+m[1]);
+        var clean = function (t) { return settings.tashkeel ? t : stripTashkeel(t); };
+        var long = raw.length + noteIds.reduce(function (a, id) { return a + vol.notes[id].length; }, 0);
+        var FS = long > 2600 ? 32 : long > 1400 ? 36 : 42, LH = Math.round(FS * 2.1), NS = Math.round(FS * 0.72), NLH = Math.round(NS * 2.05);
+        var C = { bg: '#f6f1e6', card: '#fffdf8', ink: '#1c2a27', ink2: '#44524d', green: '#0f4a42', deep: '#0a322d', gold: '#a8834a', goldSoft: '#d9c59c', quote: '#0d5b4c', line: '#e2d9c5', cream: '#f1dfb4' };
+        var GC = { s: '#1d7a55', k: '#24808f', h: '#4a68b5', q: '#a7751f', m: '#6d7a2a', r: '#8a7460', d: '#b4473a', o: '#7a857f' };
         toast('جارٍ تجهيز الصورة…');
         var logo = new Image();
-        var ready = Promise.all([document.fonts.load('700 ' + size + 'px ' + fam, 'بسم'), document.fonts.load(size + 'px ' + fam, 'بسم'),
-          new Promise(function (res) { logo.onload = res; logo.onerror = res; logo.src = 'assets/name.svg'; })]);
-        ready.then(function () {
+        Promise.all([document.fonts.load('700 ' + FS + 'px ' + fam, 'بسم'), document.fonts.load(FS + 'px ' + fam, 'بسم'),
+          new Promise(function (res) { logo.onload = res; logo.onerror = res; logo.src = 'assets/name.svg'; })]).then(function () {
           var cv = document.createElement('canvas'), ctx = cv.getContext('2d');
-          ctx.font = size + 'px ' + fam; ctx.direction = 'rtl';
-          var words = body.split(/\s+/), lines = [], cur = '';
-          words.forEach(function (w) { var t = cur ? cur + ' ' + w : w; if (ctx.measureText(t).width > W - pad * 2 - 56 && cur) { lines.push(cur); cur = w; } else cur = t; });
-          if (cur) lines.push(cur);
-          var top = 330, H = Math.round(top + lines.length * lh + 300);
-          cv.width = W; cv.height = H;
-          // الخلفية
-          var g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#0a322d'); g.addColorStop(1, '#0f4a42');
-          ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-          ctx.strokeStyle = 'rgba(217,197,156,.55)'; ctx.lineWidth = 2; ctx.strokeRect(28, 28, W - 56, H - 56);
-          ctx.strokeStyle = 'rgba(217,197,156,.2)'; ctx.strokeRect(40, 40, W - 80, H - 80);
-          // مخطوطة الاسم بلون الذهب
-          if (logo.naturalWidth) {
-            var lw = 520, lhh = lw * 58.58 / 299.26, tmp = document.createElement('canvas'); tmp.width = lw * 2; tmp.height = lhh * 2;
-            var tc = tmp.getContext('2d'); tc.drawImage(logo, 0, 0, tmp.width, tmp.height); tc.globalCompositeOperation = 'source-in'; tc.fillStyle = '#e3cd9a'; tc.fillRect(0, 0, tmp.width, tmp.height);
-            ctx.drawImage(tmp, (W - lw) / 2, 78, lw, lhh);
+          var font = function (size, bold) { return (bold ? '700 ' : '') + size + 'px ' + fam; };
+          // يقسم النص كلماتٍ، ويحفظ مع كل كلمة أرقام حواشيها ولونها
+          function words(text, size, bold, numbered) {
+            var out = [], inQ = false, n = 0;
+            ctx.font = font(size, bold);
+            text.split(/\s+/).forEach(function (tok) {
+              if (!tok) return;
+              var marks = [];
+              var w = tok.replace(/\d+/g, function () { marks.push(++n); return ''; });
+              if (!numbered) marks = [];
+              w = clean(w);
+              if (/^ـ+$/.test(w)) w = '–';              // الشرطة المكتوبة تطويلاً
+              if (w.indexOf('«') >= 0) inQ = true;
+              var mw = 0;
+              if (marks.length) { ctx.font = font(Math.round(size * 0.5), true); mw = marks.reduce(function (a, k) { return a + ctx.measureText(String(k)).width + size * 0.34; }, 0) + size * 0.08; ctx.font = font(size, bold); }
+              if (w || marks.length) out.push({ t: w, w: w ? ctx.measureText(w).width : 0, marks: marks, mw: mw, q: inQ });
+              if (w.indexOf('»') >= 0) inQ = false;
+            });
+            return out;
           }
-          ctx.direction = 'rtl'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(244,236,217,.75)'; ctx.font = '26px ' + fam;
-          ctx.fillText(b.title + ' · ' + meta.name + (s.a ? ' · ' + s.a : ''), W / 2, 232, W - pad * 2);
-          // بطاقة النص
-          var cardTop = top - 62, cardH = lines.length * lh + 96;
-          ctx.fillStyle = '#fffdf8'; roundRect(ctx, pad - 28, cardTop, W - (pad - 28) * 2, cardH, 30); ctx.fill();
-          ctx.fillStyle = '#1c2a27'; ctx.font = size + 'px ' + fam; ctx.textAlign = 'right';
-          lines.forEach(function (ln, k) { ctx.fillText(ln, W - pad, top + size * 0.55 + k * lh); });
-          // التذييل: الرقم والحكم والعزو
-          var fy = cardTop + cardH + 74;
-          ctx.textAlign = 'center'; ctx.fillStyle = '#e3cd9a'; ctx.font = '700 32px ' + fam;
-          ctx.fillText((blk[0] === 'h' ? 'الحديث ' + blk[1] : '') + (blk[4] ? '  ·  سنده ' + blk[4] : ''), W / 2, fy, W - pad * 2);
-          ctx.fillStyle = 'rgba(244,236,217,.7)'; ctx.font = '25px ' + fam;
-          ctx.fillText('تحقيق سماحة الشيخ أحمد الماحوزي', W / 2, fy + 52);
-          ctx.fillStyle = 'rgba(244,236,217,.45)'; ctx.font = '22px sans-serif'; ctx.direction = 'ltr';
-          ctx.fillText((location.host + location.pathname).replace(/\/$/, ''), W / 2, fy + 96);
-          cv.toBlob(function (blob) {
-            var name = 'wasail-' + (blk[0] === 'h' ? blk[1] : 'b' + i) + '.png', file = new File([blob], name, { type: 'image/png' });
-            if (navigator.canShare && navigator.canShare({ files: [file] }) && /Mobi|Android|iPhone|iPad/.test(navigator.userAgent)) {
-              navigator.share({ files: [file], title: b.title }).catch(function () { /* أُلغيت المشاركة */ });
-            } else {
-              var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove();
-              setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000); toast('حُفظت الصورة');
+          function wrap(ws, width, size) {
+            var sp = size * 0.3, lines = [], cur = [], cw = 0;
+            ws.forEach(function (x) {
+              var add = x.w + x.mw + (cur.length ? sp : 0);
+              if (cur.length && cw + add > width) { lines.push({ ws: cur, w: cw }); cur = []; cw = 0; add = x.w + x.mw; }
+              cur.push(x); cw += add;
+            });
+            if (cur.length) lines.push({ ws: cur, w: cw, last: true });
+            return lines;
+          }
+          function drawLines(lines, xr, y0, width, size, lh, bold, color) {
+            var sp = size * 0.3;
+            lines.forEach(function (ln, k) {
+              var gap = sp, x = xr, y = y0 + k * lh;
+              if (!ln.last && ln.ws.length > 1) gap = sp + Math.min((width - ln.w) / (ln.ws.length - 1), size * 0.9);   // ضبط الطرفين
+              ln.ws.forEach(function (wd) {
+                ctx.font = font(size, bold); ctx.textAlign = 'right'; ctx.direction = 'rtl';
+                ctx.fillStyle = wd.q ? C.quote : color;
+                if (wd.t) ctx.fillText(wd.t, x, y);
+                x -= wd.w;
+                if (wd.marks.length) {
+                  var ms = Math.round(size * 0.5); x -= size * 0.08;
+                  wd.marks.forEach(function (num) {
+                    ctx.font = font(ms, true); ctx.direction = 'ltr'; ctx.textAlign = 'center';
+                    var bw = ctx.measureText(String(num)).width + size * 0.26, bx = x - bw - size * 0.04, by = y - size * 0.86;
+                    ctx.fillStyle = 'rgba(168,131,74,.16)'; roundRect(ctx, bx, by, bw, ms * 1.3, ms * 0.35); ctx.fill();
+                    ctx.fillStyle = C.gold; ctx.fillText(String(num), bx + bw / 2, by + ms * 1.02);
+                    x -= bw + size * 0.08;
+                  });
+                }
+                x -= gap;
+              });
+            });
+          }
+          // —— التخطيط ——
+          var bodyLines = wrap(words(raw, FS, false, true), TW, FS);
+          var notes = noteIds.map(function (id, k) {
+            var paras = stripLinks(vol.notes[id]).split('\n').map(function (ln) {
+              var sanad = /^\s*و?سنده\s/.test(stripTashkeel(ln));
+              return { sanad: sanad, lines: wrap(words(ln, NS, sanad, false), TW - NS * 2.2, NS) };
+            });
+            return { n: k + 1, paras: paras, h: paras.reduce(function (a, p) { return a + p.lines.length * NLH; }, 0) + NS * 0.7 };
+          });
+          var HEAD = 250, y = HEAD + 58;
+          var metaY = y; y += 74;                                   // سطر الرقم والحكم
+          var bodyY = y + FS; y += bodyLines.length * LH + 18;
+          var notesY = 0;
+          if (notes.length) { y += 34; notesY = y; y += 70; notes.forEach(function (nt) { nt.y = y; y += nt.h; }); }
+          var cardBottom = y + 30, H = cardBottom + 150;
+          cv.width = W; cv.height = H;
+          // —— الرسم ——
+          ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
+          var g = ctx.createLinearGradient(0, 0, 0, HEAD + 90); g.addColorStop(0, C.deep); g.addColorStop(1, C.green);
+          ctx.fillStyle = g; ctx.fillRect(0, 0, W, HEAD + 90);
+          // نقش البتلات الخافت كما في الموقع
+          ctx.save(); ctx.strokeStyle = 'rgba(217,197,156,.13)'; ctx.lineWidth = 2.2;
+          for (var py = 14; py < HEAD + 80; py += 88) for (var px = 10; px < W; px += 88) {
+            ctx.save(); ctx.translate(px, py); ctx.beginPath(); ctx.moveTo(22, 8); ctx.bezierCurveTo(31, 11, 35, 17, 34, 26); ctx.bezierCurveTo(25, 28, 18, 24, 16, 16); ctx.bezierCurveTo(16, 12, 18, 9, 22, 8); ctx.stroke(); ctx.restore();
+          }
+          ctx.restore();
+          if (logo.naturalWidth) {
+            var lw = 560, lhh = lw * 58.58 / 299.26, tmp = document.createElement('canvas'); tmp.width = lw * 2; tmp.height = Math.ceil(lhh * 2);
+            var tc = tmp.getContext('2d'); tc.drawImage(logo, 0, 0, tmp.width, tmp.height); tc.globalCompositeOperation = 'source-in'; tc.fillStyle = '#e3cd9a'; tc.fillRect(0, 0, tmp.width, tmp.height);
+            ctx.drawImage(tmp, (W - lw) / 2, 52, lw, lhh);
+          }
+          ctx.direction = 'rtl'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(244,236,217,.82)'; ctx.font = font(28);
+          ctx.fillText([b.title, meta.name, s.a, s.n ? 'الباب ' + s.n : ''].filter(Boolean).join('  ·  '), W / 2, 212, W - M * 2);
+          // البطاقة
+          ctx.save(); ctx.shadowColor = 'rgba(40,30,10,.16)'; ctx.shadowBlur = 40; ctx.shadowOffsetY = 12;
+          ctx.fillStyle = C.card; roundRect(ctx, M, HEAD, W - M * 2, cardBottom - HEAD, 34); ctx.fill(); ctx.restore();
+          ctx.strokeStyle = C.goldSoft; ctx.lineWidth = 1.5; roundRect(ctx, M, HEAD, W - M * 2, cardBottom - HEAD, 34); ctx.stroke();
+          // رقم الحديث والحكم
+          var bx = X1;
+          if (blk[0] === 'h') {
+            ctx.font = font(27, true); ctx.direction = 'ltr';
+            var t1 = String(blk[1]), w1 = ctx.measureText(t1).width + 44;
+            ctx.fillStyle = C.green; roundRect(ctx, bx - w1, metaY - 6, w1, 48, 12); ctx.fill();
+            ctx.fillStyle = '#f4ecd9'; ctx.textAlign = 'center'; ctx.fillText(t1, bx - w1 / 2, metaY + 28);
+            bx -= w1 + 16;
+            ctx.direction = 'rtl'; ctx.font = font(24); ctx.fillStyle = '#7a857f'; ctx.textAlign = 'right'; ctx.fillText('ح ' + blk[2], bx, metaY + 27); bx -= ctx.measureText('ح ' + blk[2]).width + 18;
+            if (blk[4]) {
+              ctx.font = font(24, true); var w2 = ctx.measureText(blk[4]).width + 40;
+              ctx.fillStyle = GC[blk[5]] || GC.o; roundRect(ctx, bx - w2, metaY - 2, w2, 42, 21); ctx.fill();
+              ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText(blk[4], bx - w2 / 2, metaY + 27);
             }
+          }
+          drawLines(bodyLines, X1, bodyY, TW, FS, LH, false, C.ink);
+          // التعليق
+          if (notes.length) {
+            ctx.strokeStyle = C.line; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(X0, notesY); ctx.lineTo(X1, notesY); ctx.stroke();
+            ctx.fillStyle = C.gold; ctx.beginPath(); ctx.arc(W / 2, notesY, 5, 0, Math.PI * 2); ctx.fill();
+            ctx.direction = 'rtl'; ctx.textAlign = 'right'; ctx.font = font(26, true); ctx.fillStyle = C.gold; ctx.fillText('الحواشي والتخريج', X1, notesY + 46);
+            notes.forEach(function (nt) {
+              var bs = NS * 1.25;
+              ctx.fillStyle = C.gold; roundRect(ctx, X1 - bs, nt.y + NLH * 0.5 - bs * 0.8, bs, bs, bs * 0.3); ctx.fill();
+              ctx.fillStyle = '#fff'; ctx.font = font(Math.round(NS * 0.7), true); ctx.direction = 'ltr'; ctx.textAlign = 'center'; ctx.fillText(String(nt.n), X1 - bs / 2, nt.y + NLH * 0.5 + bs * 0.02);
+              var yy = nt.y + NLH * 0.62;
+              nt.paras.forEach(function (p) { drawLines(p.lines, X1 - NS * 2.2, yy, TW - NS * 2.2, NS, NLH, p.sanad, p.sanad ? C.green : C.ink2); yy += p.lines.length * NLH; });
+            });
+          }
+          // التذييل
+          ctx.direction = 'rtl'; ctx.textAlign = 'center'; ctx.fillStyle = C.green; ctx.font = font(27, true);
+          ctx.fillText(b.full, W / 2, cardBottom + 58, W - M * 2);
+          ctx.fillStyle = C.gold; ctx.font = font(24);
+          ctx.fillText(b.role + ' سماحة الشيخ أحمد الماحوزي', W / 2, cardBottom + 98);
+          ctx.fillStyle = '#9aa39d'; ctx.font = '20px sans-serif'; ctx.direction = 'ltr';
+          ctx.fillText((location.host + location.pathname).replace(/\/$/, '') + (blk[0] === 'h' ? '/#/h/' + blk[1] : ''), W / 2, cardBottom + 132);
+          cv.toBlob(function (blob) {
+            var name = 'wasail-' + (blk[0] === 'h' ? blk[1] : 'v' + v + '-' + i) + '.png';
+            var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000); toast('حُمّلت الصورة PNG');
           }, 'image/png');
-        });
+        }).catch(function () { toast('تعذّر تجهيز الصورة'); });
       }
       function roundRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
 
