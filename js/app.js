@@ -38,11 +38,14 @@
   var escH = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
   var bookOf = function (id) { return BOOKS.filter(function (b) { return b.id === id; })[0]; };
   var blockText = function (b) { return b[0] === 'h' ? b[3] : b[0] === 'b' ? b[2] : b[1]; };
-  var stripMarks = function (t) { return t.replace(/\d+/g, ''); };
+  var stripLinks = function (t) { return t.replace(/\uE003[^\uE001]*\uE001|\uE004/g, ''); };
+  var stripMarks = function (t) { return stripLinks(t).replace(/\uE000\d+\uE001/g, ''); };
   var stripTashkeel = function (t) { return t.replace(/[ً-ٰٟ]/g, ''); };
 
   var ICON = {
     copy: '<svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>',
+    image: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="m4 18 5.5-5 3.5 3 3-2.5 4 3.5"/></svg>',
+    print: '<svg viewBox="0 0 24 24"><path d="M7 8V3h10v5M7 17H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="7" y="14" width="10" height="7" rx="1"/></svg>',
     link: '<svg viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>',
     notes: '<svg viewBox="0 0 24 24"><path d="M5 4h14v12l-4 4H5z"/><path d="M15 20v-4h4M8 9h8M8 13h5"/></svg>',
     list: '<svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>',
@@ -122,6 +125,13 @@
         if (o.notes !== false) { open(''); out += '<sup class="fn" data-n="' + id + '" role="button" tabindex="0" aria-label="الحاشية ' + n + '">' + n + '</sup>'; }
         continue;
       }
+      if (c === 0xE003) {                       // إحالة داخلية: h{رقم الحديث} أو s{جزء}.{قسم}
+        var e2 = text.indexOf('\uE001', i), tg = text.slice(i + 1, e2);
+        i = e2;
+        if (o.links !== false) { open(''); out += '<a class="xref" href="' + (tg[0] === 'h' ? '#/h/' + tg.slice(1) : '#/read/' + BOOKS[0].id + '/' + tg.slice(1).replace('.', '/')) + '">'; }
+        continue;
+      }
+      if (c === 0xE004) { if (o.links !== false) { open(''); out += '</a>'; } continue; }
       if (o.plain && AR.isMark(c) && c !== 0x0640) continue;
       while (ri < ranges.length && i >= ranges[ri][1]) ri++;
       var inM = ri < ranges.length && i >= ranges[ri][0];
@@ -161,6 +171,7 @@
     else if (p[0] === 'read' && bookOf(p[1])) { nav('book'); viewReader(bookOf(p[1]), +p[2] || 1, +p[3] || 0, p[4], r.q); }
     else if (p[0] === 'h') { nav('book'); gotoHadith(BOOKS[0], +p[1]); }
     else if (p[0] === 'search') { nav('search'); viewSearch(r.q); }
+    else if (p[0] === 'index') { nav('index'); viewIndex(p[1] === 'rawi' ? 'rawi' : 'sources'); }
     else { viewHome(); }
   }
   function fail(e) {
@@ -408,24 +419,24 @@
       $('#tocList').addEventListener('click', function () { document.body.classList.remove('toc-open'); });
 
       /* —— رسم الأقسام —— */
-      function blockHTML(i) {
+      function blockHTML(i, forPrint) {
         var blk = vol.blocks[i], t = blk[0], txt = blockText(blk);
-        var o = { plain: !settings.tashkeel, notes: settings.notes !== 'off' };
+        var o = { plain: !settings.tashkeel, notes: forPrint || settings.notes !== 'off', links: !forPrint };
         if (comp && i === targetBlock && hlNote < 0) o.ranges = AR.ranges(comp, txt);
         var body = renderText(txt, o);
         var ids = [], m, re = /(\d+)/g; while ((m = re.exec(txt))) ids.push(+m[1]);
         var inl = '';
-        if (settings.notes === 'inline' && ids.length) {
+        if ((forPrint || settings.notes === 'inline') && ids.length) {
           inl = '<ol class="inl-notes">' + ids.map(function (id, k) { return '<li data-n="' + id + '"><span class="note-n">' + (k + 1) + '</span><div>' + noteHTML(id) + '</div></li>'; }).join('') + '</ol>';
         }
         var attr = ' id="b' + i + '" data-b="' + i + '"' + (ids.length ? ' data-has="1"' : '');
         if (t === 'h') {
           var g = blk[5] ? '<a class="grade g-' + blk[5] + '" href="#/search?grade=' + blk[5] + '" title="حكم السند في حاشية المحقق">' + escH(blk[4]) + '</a>' : '';
           return '<article class="hadith"' + attr + '><header><span class="hnum" title="الرقم العام">' + blk[1] + '</span><span class="hloc">' + blk[2] + '</span>' + g +
-            '<span class="acts"><button data-act="copy" title="نسخ الحديث مع العزو">' + ICON.copy + '</button><button data-act="copyn" title="نسخ مع الحواشي">' + ICON.notes + '</button><button data-act="link" title="نسخ رابط الحديث">' + ICON.link + '</button></span></header>' +
+            '<span class="acts"><button data-act="copy" title="نسخ الحديث مع العزو">' + ICON.copy + '</button><button data-act="copyn" title="نسخ مع الحواشي">' + ICON.notes + '</button><button data-act="link" title="نسخ رابط الحديث">' + ICON.link + '</button><button data-act="img" title="حفظ الحديث صورةً للمشاركة">' + ICON.image + '</button><button data-act="pdf" title="طباعة الحديث أو حفظه PDF">' + ICON.print + '</button></span></header>' +
             '<p class="txt">' + body + '</p>' + inl + '</article>';
         }
-        if (t === 'b') return '<header class="bab"' + attr + '><span class="bab-n">الباب ' + blk[1] + '</span><h3 class="txt">' + body + '</h3></header>' + inl;
+        if (t === 'b') return '<header class="bab"' + attr + '><span class="bab-n">الباب ' + blk[1] + '</span><h3 class="txt">' + body + '</h3><button class="bab-pdf" data-act="pdfbab" title="طباعة الباب كاملاً أو حفظه PDF">' + ICON.print + '<span>PDF الباب</span></button></header>' + inl;
         if (t === 'k') return '<h2 class="kitab txt"' + attr + '>' + body + '</h2>' + inl;
         if (t === 'a') return '<h2 class="abwab txt"' + attr + '>' + body + '</h2>' + inl;
         if (t === 's') return '<h2 class="sect txt"' + attr + '>' + body + '</h2>' + inl;
@@ -508,7 +519,7 @@
       notesBody.addEventListener('click', function (e) {
         var cp = e.target.closest('.note-copy'), nt = e.target.closest('.note');
         if (!nt) return;
-        if (cp) { copy(vol.notes[+nt.dataset.n], 'نُسخت الحاشية'); return; }
+        if (cp) { copy(stripLinks(vol.notes[+nt.dataset.n]), 'نُسخت الحاشية'); return; }
         if (e.target.closest('a')) return;
         $$('.note.focus', notesBody).forEach(function (x) { x.classList.remove('focus'); });
         nt.classList.add('focus');
@@ -522,15 +533,88 @@
         var blk = vol.blocks[i], txt = blockText(blk), ids = [], k = 0;
         var body = withNotes ? txt.replace(/(\d+)/g, function (m, id) { ids.push(+id); return '(' + (++k) + ')'; }) : stripMarks(txt);
         var out = body + '\n' + citation(blk);
-        if (withNotes && ids.length) out += '\n\nالحواشي:\n' + ids.map(function (id, j) { return '(' + (j + 1) + ') ' + vol.notes[id]; }).join('\n');
+        if (withNotes && ids.length) out += '\n\nالحواشي:\n' + ids.map(function (id, j) { return '(' + (j + 1) + ') ' + stripLinks(vol.notes[id]); }).join('\n');
         return out;
       }
+      /* —— التصدير: PDF عبر الطباعة، وصورة للمشاركة —— */
+      function printBlocks(arr, label) {
+        var area = $('#printArea');
+        if (!area) { area = document.createElement('div'); area.id = 'printArea'; document.body.appendChild(area); }
+        var s = meta.sections[sectionOf(meta, arr[0])];
+        area.innerHTML = '<header class="p-head"><span class="name-mark sm"></span><div><b>' + b.full + '</b><span>' + b.role + ' سماحة الشيخ أحمد الماحوزي</span></div></header>' +
+          '<p class="p-path">' + [meta.name, s.k, s.a, s.n ? 'الباب ' + s.n : ''].filter(Boolean).join(' · ') + '</p>' +
+          '<div class="text">' + arr.map(function (k) { return blockHTML(k, true); }).join('') + '</div>' +
+          '<footer class="p-foot">' + location.origin + location.pathname + '</footer>';
+        var old = document.title; document.title = b.title + ' — ' + meta.name + ' — ' + label;
+        var done = function () { document.title = old; area.innerHTML = ''; window.removeEventListener('afterprint', done); };
+        window.addEventListener('afterprint', done);
+        setTimeout(function () { window.print(); }, 60);
+      }
+      function shareImage(i) {
+        var blk = vol.blocks[i], W = 1080, pad = 84, s = meta.sections[sectionOf(meta, i)];
+        var body = stripMarks(blockText(blk)); if (!settings.tashkeel) body = stripTashkeel(body);
+        var size = body.length > 1400 ? 30 : body.length > 800 ? 34 : body.length > 380 ? 40 : 46, lh = size * 2.05;
+        var fam = getComputedStyle(document.documentElement).getPropertyValue('--read-font') || 'serif';
+        toast('جارٍ تجهيز الصورة…');
+        var logo = new Image();
+        var ready = Promise.all([document.fonts.load('700 ' + size + 'px ' + fam, 'بسم'), document.fonts.load(size + 'px ' + fam, 'بسم'),
+          new Promise(function (res) { logo.onload = res; logo.onerror = res; logo.src = 'assets/name.svg'; })]);
+        ready.then(function () {
+          var cv = document.createElement('canvas'), ctx = cv.getContext('2d');
+          ctx.font = size + 'px ' + fam; ctx.direction = 'rtl';
+          var words = body.split(/\s+/), lines = [], cur = '';
+          words.forEach(function (w) { var t = cur ? cur + ' ' + w : w; if (ctx.measureText(t).width > W - pad * 2 - 56 && cur) { lines.push(cur); cur = w; } else cur = t; });
+          if (cur) lines.push(cur);
+          var top = 330, H = Math.round(top + lines.length * lh + 300);
+          cv.width = W; cv.height = H;
+          // الخلفية
+          var g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#0a322d'); g.addColorStop(1, '#0f4a42');
+          ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+          ctx.strokeStyle = 'rgba(217,197,156,.55)'; ctx.lineWidth = 2; ctx.strokeRect(28, 28, W - 56, H - 56);
+          ctx.strokeStyle = 'rgba(217,197,156,.2)'; ctx.strokeRect(40, 40, W - 80, H - 80);
+          // مخطوطة الاسم بلون الذهب
+          if (logo.naturalWidth) {
+            var lw = 520, lhh = lw * 58.58 / 299.26, tmp = document.createElement('canvas'); tmp.width = lw * 2; tmp.height = lhh * 2;
+            var tc = tmp.getContext('2d'); tc.drawImage(logo, 0, 0, tmp.width, tmp.height); tc.globalCompositeOperation = 'source-in'; tc.fillStyle = '#e3cd9a'; tc.fillRect(0, 0, tmp.width, tmp.height);
+            ctx.drawImage(tmp, (W - lw) / 2, 78, lw, lhh);
+          }
+          ctx.direction = 'rtl'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(244,236,217,.75)'; ctx.font = '26px ' + fam;
+          ctx.fillText(b.title + ' · ' + meta.name + (s.a ? ' · ' + s.a : ''), W / 2, 232, W - pad * 2);
+          // بطاقة النص
+          var cardTop = top - 62, cardH = lines.length * lh + 96;
+          ctx.fillStyle = '#fffdf8'; roundRect(ctx, pad - 28, cardTop, W - (pad - 28) * 2, cardH, 30); ctx.fill();
+          ctx.fillStyle = '#1c2a27'; ctx.font = size + 'px ' + fam; ctx.textAlign = 'right';
+          lines.forEach(function (ln, k) { ctx.fillText(ln, W - pad, top + size * 0.55 + k * lh); });
+          // التذييل: الرقم والحكم والعزو
+          var fy = cardTop + cardH + 74;
+          ctx.textAlign = 'center'; ctx.fillStyle = '#e3cd9a'; ctx.font = '700 32px ' + fam;
+          ctx.fillText((blk[0] === 'h' ? 'الحديث ' + blk[1] : '') + (blk[4] ? '  ·  سنده ' + blk[4] : ''), W / 2, fy, W - pad * 2);
+          ctx.fillStyle = 'rgba(244,236,217,.7)'; ctx.font = '25px ' + fam;
+          ctx.fillText('تحقيق سماحة الشيخ أحمد الماحوزي', W / 2, fy + 52);
+          ctx.fillStyle = 'rgba(244,236,217,.45)'; ctx.font = '22px sans-serif'; ctx.direction = 'ltr';
+          ctx.fillText((location.host + location.pathname).replace(/\/$/, ''), W / 2, fy + 96);
+          cv.toBlob(function (blob) {
+            var name = 'wasail-' + (blk[0] === 'h' ? blk[1] : 'b' + i) + '.png', file = new File([blob], name, { type: 'image/png' });
+            if (navigator.canShare && navigator.canShare({ files: [file] }) && /Mobi|Android|iPhone|iPad/.test(navigator.userAgent)) {
+              navigator.share({ files: [file], title: b.title }).catch(function () { /* أُلغيت المشاركة */ });
+            } else {
+              var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove();
+              setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000); toast('حُفظت الصورة');
+            }
+          }, 'image/png');
+        });
+      }
+      function roundRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+
       text.addEventListener('click', function (e) {
         var sup = e.target.closest('sup.fn'), act = e.target.closest('[data-act]'), blkEl = e.target.closest('[data-b]');
         if (act && blkEl) {
           var i = +blkEl.dataset.b;
           if (act.dataset.act === 'copy') copy(plainOf(i, false), 'نُسخ الحديث مع العزو');
           else if (act.dataset.act === 'copyn') copy(plainOf(i, true), 'نُسخ الحديث مع حواشيه');
+          else if (act.dataset.act === 'img') shareImage(i);
+          else if (act.dataset.act === 'pdf') printBlocks([i], 'الحديث ' + vol.blocks[i][1]);
+          else if (act.dataset.act === 'pdfbab') { var si = sectionOf(meta, i), se = sectionEnd(meta, si, vol), arr = []; for (var x = meta.sections[si].s; x < se; x++) arr.push(x); printBlocks(arr, 'الباب ' + vol.blocks[i][1]); }
           else copy(location.origin + location.pathname + '#/h/' + vol.blocks[i][1], 'نُسخ رابط الحديث');
           return;
         }
@@ -607,7 +691,7 @@
     window.scrollTo(0, 0);
     var b = BOOKS[0], alive = true, state = { hits: [], shown: 0, done: false, id: 0 };
     cleanup = function () { alive = false; searchSeq++; };
-    var opts = { scope: q.scope || 'all', mode: q.mode || 'all', whole: q.whole === '1', vol: +q.vol || 0, grade: q.grade || '' };
+    var opts = { scope: q.scope || 'all', mode: q.mode || 'all', whole: q.whole === '1', vol: +q.vol || 0, grade: q.grade || '', src: q.src || '', rawi: q.rawi || '' };
     var query = q.q || '';
     app.innerHTML =
       '<section class="search-head"><div class="hero-pattern" aria-hidden="true"></div><div class="wrap">' +
@@ -634,6 +718,8 @@
         if (opts.whole) p.push('whole=1');
         if (opts.vol) p.push('vol=' + opts.vol);
         if (opts.grade) p.push('grade=' + opts.grade);
+        if (opts.src) p.push('src=' + encodeURIComponent(opts.src));
+        if (opts.rawi) p.push('rawi=' + encodeURIComponent(opts.rawi));
         var h = '#/search?' + p.join('&');
         if (location.hash === h) run(); else { history.replaceState(null, '', h); run(); }
       }
@@ -658,6 +744,21 @@
         $('#sList').innerHTML = ''; $('#sMore').innerHTML = '';
         var numOnly = /^[\d٠-٩\s]+$/.test(query) && query, n = numOnly ? +AR.norm(query).replace(/ /g, '') : 0;
         var jump = n && volOfHadith(idx, n) ? '<a class="jump" href="#/h/' + n + '">انتقل مباشرةً إلى الحديث رقم <b>' + n + '</b> ' + ICON.arrow + '</a>' : '';
+        var browse = opts.src || opts.rawi;
+        if (browse) {
+          // تصفّح فهرس: مصدر أو راوٍ — المواضع جاهزة في ملف الفهرس
+          var kind = opts.src ? 'sources' : 'rawi', my0 = state;
+          var chip = '<p class="count"><a class="chip-x" href="#/index/' + kind + '">' + (opts.src ? 'المصدر' : 'الراوي') + ': <b>' + escH(browse) + '</b> ✕</a></p>';
+          status(chip + '<div class="bar"><i style="width:30%"></i></div>');
+          var hl = opts.rawi ? AR.compile('"' + opts.rawi + '"', {}) : (query ? AR.compile(query, opts) : null);
+          getJSON('data/' + b.id + '/' + kind + '.json').then(function (list) {
+            if (!alive || my0 !== state) return;
+            var it = list.filter(function (x) { return x.n === browse; })[0];
+            if (it) for (var k = 0; k < it.h.length; k += 2) if (!opts.vol || opts.vol === it.h[k]) my0.hits.push([it.h[k], it.h[k + 1], -1, 1]);
+            my0.done = true; finish(my0, hl, chip);
+          }).catch(fail);
+          return;
+        }
         if (!query && !opts.grade) {
           status('<div class="tips"><h3>كيف أبحث؟</h3><ul><li>اكتب الكلمات بأي صورة: <b>الصلوة</b>، <b>الصَّلاة</b>، <b>الصلاه</b> — كلّها سواء.</li><li>ضع العبارة بين علامتي تنصيص للمطابقة النصية: <b>«لا ضرر ولا ضرار»</b>.</li><li>اكتب رقماً للانتقال إلى الحديث مباشرة.</li><li>ابحث في الحواشي عن راوٍ أو مصدر: <b>الكافي الشريف</b>، <b>رجاله ثقات</b>.</li></ul></div>');
           return;
@@ -738,7 +839,7 @@
         var kind = ni >= 0 ? 'حاشية' : { h: 'حديث', b: 'عنوان باب', k: 'عنوان', a: 'عنوان', s: 'عنوان', t: 'عنوان' }[blk[0]] || 'متن';
         var body;
         if (ni >= 0) {
-          var nt = vol.notes[ni], ex = excerpt(nt.replace(/\n/g, ' '), AR.ranges(compiled, nt.replace(/\n/g, ' ')), 420);
+          var nt = stripLinks(vol.notes[ni]), ex = excerpt(nt.replace(/\n/g, ' '), AR.ranges(compiled, nt.replace(/\n/g, ' ')), 420);
           var ctx = stripMarks(blockText(blk)); ctx = ctx.length > 150 ? ctx.slice(0, 150) + '…' : ctx;
           body = '<p class="r-ctx">' + escH(ctx) + '</p><p class="r-txt note">' + ex.pre + renderText(ex.t, { ranges: ex.r, notes: false }) + '</p>';
         } else {
@@ -751,6 +852,34 @@
       }
       run();
       if (!query) input.focus();
+    }).catch(fail);
+  }
+
+  /* ───────── الفهارس: المصادر والرواة ───────── */
+  function viewIndex(kind) {
+    window.scrollTo(0, 0);
+    var b = BOOKS[0], alive = true;
+    cleanup = function () { alive = false; };
+    var isSrc = kind === 'sources';
+    app.innerHTML =
+      '<section class="search-head"><div class="hero-pattern" aria-hidden="true"></div><div class="wrap">' +
+        '<h1>فهارس ' + b.title + '</h1>' +
+        '<div class="s-opts"><div class="og"><a class="tab' + (isSrc ? ' on' : '') + '" href="#/index/sources">المصادر</a><a class="tab' + (!isSrc ? ' on' : '') + '" href="#/index/rawi">الرواة</a></div></div>' +
+        '<p class="idx-lead">' + (isSrc ? 'المصادر التي خرّج منها المحقق أحاديث الكتاب في حواشيه. اضغط مصدراً لتصفّح كل ما خُرّج منه.' : 'أسماء الرواة كما وردت في أسانيد الأحاديث، بلا توحيدٍ بين صور الاسم الواحد (مثل «ابن أبي عمير» و«محمد بن أبي عمير»).') + '</p>' +
+      '</div></section>' +
+      '<section class="wrap block idx"><div class="filter">' + ICON.search + '<input id="idxF" type="search" placeholder="' + (isSrc ? 'ابحث عن مصدر…' : 'ابحث عن راوٍ…') + '" autocomplete="off"></div><p class="s-status" id="idxN"></p><div class="idx-list" id="idxList"><div class="spinner"></div></div></section>' + footer();
+    getJSON('data/' + b.id + '/' + kind + '.json').then(function (list) {
+      if (!alive) return;
+      var max = list[0].c;
+      function draw(f) {
+        var nf = f ? AR.norm(f) : '', items = list.filter(function (x) { return !nf || AR.norm(x.n).indexOf(nf) >= 0; });
+        $('#idxN').innerHTML = '<p>' + fmt(items.length) + (isSrc ? ' مصدراً' : ' اسماً') + '</p>';
+        $('#idxList').innerHTML = items.slice(0, 600).map(function (x) {
+          return '<a class="idx-item" href="#/search?' + (isSrc ? 'src' : 'rawi') + '=' + encodeURIComponent(x.n) + '"><span class="idx-n">' + escH(x.n) + '</span><span class="idx-bar"><i style="width:' + Math.max(2, Math.sqrt(x.c / max) * 100) + '%"></i></span><b>' + fmt(x.c) + '</b></a>';
+        }).join('') || '<p class="hint">لا نتائج.</p>';
+      }
+      draw('');
+      var t; $('#idxF').addEventListener('input', function () { var v = this.value.trim(); clearTimeout(t); t = setTimeout(function () { draw(v); }, 150); });
     }).catch(fail);
   }
 

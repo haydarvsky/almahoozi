@@ -26,7 +26,8 @@
     var out = '', map = wantMap ? [] : null, lastSpace = true;
     for (var i = 0; i < s.length; i++) {
       var ch = s[i], c = s.charCodeAt(i);
-      if (c === 0xE000) {                       // علامة حاشية: تُتخطّى كاملة
+      if (c === 0xE004) continue;                // نهاية رابط إحالة
+      if (c === 0xE000 || c === 0xE003) {                       // علامة حاشية: تُتخطّى كاملة
         var e = s.indexOf('', i);
         i = e < 0 ? s.length : e;
         continue;

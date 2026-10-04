@@ -400,4 +400,43 @@ sup.fn:hover, sup.fn.on { background: var(--gold); color: #fff; }
   .goto input { width: 120px; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
-@media print { .topbar, .toc, .notes, .toolbar, .prev-wrap, .acts { display: none !important; } .reader { display: block; } }
+/* ── الفهارس ── */
+.tab { height: 36px; padding: 0 22px; display: inline-grid; place-items: center; border-radius: 999px; border: 1px solid rgba(217, 197, 156, .35); color: rgba(244, 236, 217, .85); }
+.tab.on { background: var(--gold-soft); border-color: var(--gold-soft); color: var(--primary-deep); font-weight: 700; }
+.idx-lead { margin-top: 16px; max-width: 46em; color: rgba(244, 236, 217, .75); font-size: 15px; }
+.idx { padding-top: 28px; max-width: 900px; }
+.idx-list { margin-top: 6px; }
+.idx-item { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(60px, 1fr) 64px; align-items: center; gap: 14px; padding: 9px 14px; border-radius: 12px; transition: background .15s; }
+.idx-item:hover { background: var(--surface); box-shadow: var(--shadow); }
+.idx-n { font: 700 19px var(--read-font); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.idx-bar { height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+.idx-bar i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--gold), var(--primary)); }
+.idx-item b { text-align: end; font-size: 14px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.chip-x { display: inline-flex; gap: 8px; align-items: center; padding: 6px 16px; border-radius: 999px; background: var(--primary); color: var(--on-primary); font-size: 14.5px; }
+.chip-x b { color: #f1dfb4; font-size: 16px; }
+.bab-pdf { position: absolute; inset-inline-end: 12px; top: 12px; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font: 12.5px var(--ui-font); opacity: .0; transition: opacity .2s, color .2s; }
+.bab:hover .bab-pdf, .bab-pdf:focus-visible { opacity: 1; }
+.bab-pdf:hover { color: var(--primary); border-color: var(--gold); }
+.bab-pdf svg { width: 15px; height: 15px; }
+@media (max-width: 860px) { .bab-pdf { opacity: 1; position: static; margin: 12px auto 0; } .bab-pdf span { display: inline; } }
+#printArea { display: none; }
+@media print {
+  @page { margin: 18mm 16mm; }
+  body > *:not(#printArea) { display: none !important; }
+  body { background: #fff !important; color: #000; padding: 0 !important; }
+  #printArea { display: block; --ink: #111; --ink-2: #333; --surface: #fff; --surface-2: #f4f1ea; --line: #ccc; --primary: #0f4a42; --gold: #8a6a35; --gold-soft: #c9b88f; --quote: #0d5b4c; --muted: #555; }
+  .p-head { display: flex; align-items: center; gap: 16px; padding-bottom: 10px; border-bottom: 1.5px solid #8a6a35; }
+  .p-head .name-mark { width: 190px; margin: 0; background: #0f4a42; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .p-head div { display: flex; flex-direction: column; font: 13px var(--ui-font); color: #333; }
+  .p-head b { font: 700 17px var(--read-font); color: #000; }
+  .p-path { font: 12.5px var(--ui-font); color: #555; margin: 8px 0 4px; }
+  .p-foot { margin-top: 18px; padding-top: 8px; border-top: 1px solid #ccc; font: 11px sans-serif; color: #777; direction: ltr; text-align: center; }
+  #printArea .text { max-width: none; font-size: 15.5pt; line-height: 2; }
+  #printArea .hadith, #printArea .para { margin-inline: 0; padding-inline: 0; break-inside: auto; }
+  #printArea .hadith header, #printArea .bab { break-after: avoid; }
+  #printArea .acts, #printArea .bab-pdf { display: none !important; }
+  #printArea .hnum, #printArea .bab-n, #printArea .grade, #printArea .note-n, #printArea .inl-notes { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  #printArea .bab { background: none; border: 1px solid #ccc; margin: 14px 0; padding: 12px 16px; }
+  #printArea .inl-notes { font-size: .74em; break-inside: avoid-page; }
+  #printArea sup.fn { background: none; color: #8a6a35; }
+}
