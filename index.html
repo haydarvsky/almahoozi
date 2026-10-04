@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>مكتبة الشيخ أحمد الماحوزي — المؤلفات والتحقيقات</title>
+<meta name="description" content="المكتبة الرقمية لمؤلفات وتحقيقات سماحة الشيخ أحمد الماحوزي: وسائل الشيعة محقَّقاً مصحَّح الأسانيد، بنصٍّ قابل للنسخ والبحث وحواشٍ مرتبطة بالمتن.">
+<meta name="theme-color" content="#0c3a34">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600;700&family=Scheherazade+New:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+<script>
+// السمة قبل الرسم حتى لا يومض اللون
+try { document.documentElement.dataset.theme = JSON.parse(localStorage.getItem('mahoozi.settings') || '{}').theme || 'light'; } catch (e) { document.documentElement.dataset.theme = 'light'; }
+</script>
+</head>
+<body>
+<header class="topbar" id="topbar">
+  <a class="brand" href="#/" aria-label="الرئيسة">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <span class="brand-sub">المكتبة الرقمية</span>
+  </a>
+  <nav class="nav" aria-label="التنقل الرئيس">
+    <a href="#/" data-nav="home">الرئيسة</a>
+    <a href="#/book/wasail" data-nav="book">وسائل الشيعة</a>
+    <a href="#/search" data-nav="search">البحث</a>
+  </nav>
+  <form class="top-search" id="topSearch" role="search">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="topSearchInput" type="search" placeholder="ابحث في المتن والحواشي…" autocomplete="off" aria-label="بحث">
+    <kbd>/</kbd>
+  </form>
+  <button class="icon-btn" id="themeBtn" title="تبديل السمة" aria-label="تبديل السمة">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+  </button>
+</header>
+<main id="app" tabindex="-1"></main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="js/normalize.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
