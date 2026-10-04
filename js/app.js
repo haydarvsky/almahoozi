@@ -54,7 +54,7 @@
   };
 
   /* ───────── الإعدادات ───────── */
-  var DEFAULTS = { theme: 'light', size: 21, font: 'amiri', tashkeel: true, notes: 'side' };
+  var DEFAULTS = { theme: 'light', size: 21, font: 'saad', tashkeel: true, notes: 'side' };
   var settings = Object.assign({}, DEFAULTS);
   try { Object.assign(settings, JSON.parse(localStorage.getItem('mahoozi.settings') || '{}')); } catch (e) { /* تخزين غير متاح */ }
   function saveSettings() { try { localStorage.setItem('mahoozi.settings', JSON.stringify(settings)); } catch (e) { /* يُتجاهل */ } }
@@ -362,7 +362,7 @@
           '<label>الحواشي</label>' + seg('notes', [['side', 'جانبية'], ['inline', 'تحت النص'], ['off', 'مخفية']]) +
           '<label>التشكيل</label>' + seg('tashkeel', [[true, 'ظاهر'], [false, 'مخفي']]) +
           '<label>حجم الخط</label><div class="seg"><button data-size="-1" aria-label="تصغير">أ−</button><span class="size-v">' + settings.size + '</span><button data-size="1" aria-label="تكبير">أ+</button></div>' +
-          '<label>الخط</label>' + seg('font', [['amiri', 'أميري'], ['naskh', 'نسخ'], ['scheherazade', 'شهرزاد']]) +
+          '<label>الخط</label>' + seg('font', [['saad', 'صقال سعد'], ['amiri', 'أميري'], ['naskh', 'نسخ']]) +
           '<label>السمة</label>' + seg('theme', [['light', 'فاتحة'], ['sepia', 'ورقية'], ['dark', 'داكنة']]);
       }
       drawSettings();

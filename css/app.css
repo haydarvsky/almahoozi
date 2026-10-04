@@ -1,5 +1,9 @@
 /* مكتبة الشيخ أحمد الماحوزي
    الألوان مأخوذة من صورة الشيخ: خضرة جلد الكتاب، ذهب زخرفته، وبرُ العباءة، وبياض الورق. */
+@font-face { font-family: 'Sakkal Saad'; src: url(../assets/fonts/SakkalSaad-Light.woff2) format('woff2'); font-weight: 300; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Sakkal Saad'; src: url(../assets/fonts/SakkalSaad-Regular.woff2) format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Sakkal Saad'; src: url(../assets/fonts/SakkalSaad-Medium.woff2) format('woff2'); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Sakkal Saad'; src: url(../assets/fonts/SakkalSaad-Bold.woff2) format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
 :root {
   --bg: #f6f1e6;
   --surface: #fffdf8;
@@ -18,8 +22,8 @@
   --hl-ink: #2b2000;
   --shadow: 0 1px 2px rgba(40, 30, 10, .05), 0 8px 28px rgba(40, 30, 10, .07);
   --read-size: 21px;
-  --read-font: 'Amiri', 'Noto Naskh Arabic', serif;
-  --ui-font: 'IBM Plex Sans Arabic', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --read-font: 'Sakkal Saad', 'Amiri', 'Noto Naskh Arabic', serif;
+  --ui-font: 'Sakkal Saad', 'IBM Plex Sans Arabic', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --top: 62px;
   --g-s: #1d7a55; --g-k: #24808f; --g-h: #4a68b5; --g-q: #a7751f; --g-m: #6d7a2a; --g-r: #8a7460; --g-d: #b4473a; --g-o: #7a857f;
 }
@@ -32,6 +36,7 @@
   --hl: #7a5c00; --hl-ink: #fff3c4; --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 28px rgba(0, 0, 0, .35);
   --g-s: #4cc493; --g-k: #5cc0d0; --g-h: #8ea6ee; --g-q: #e0ad52; --g-m: #b3c264; --g-r: #c0a78f; --g-d: #ef8375; --g-o: #9aa59f;
 }
+:root[data-font="amiri"] { --read-font: 'Amiri', 'Noto Naskh Arabic', serif; }
 :root[data-font="naskh"] { --read-font: 'Noto Naskh Arabic', 'Amiri', serif; }
 :root[data-font="scheherazade"] { --read-font: 'Scheherazade New', 'Amiri', serif; }
 
