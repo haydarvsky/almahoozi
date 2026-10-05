@@ -400,6 +400,21 @@ sup.fn:hover, sup.fn.on { background: var(--gold); color: #fff; }
   .goto input { width: 120px; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+/* ── الرواة ── */
+.rawi-name { font: 700 clamp(30px, 5vw, 48px)/1.5 var(--read-font); color: #f1dfb4; }
+.rel-chips { display: flex; flex-wrap: wrap; gap: 10px; }
+.rel-chips a { display: inline-flex; align-items: center; gap: 10px; padding: 8px 16px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); font: 700 18px var(--read-font); transition: border-color .2s, transform .15s; }
+.rel-chips a:hover { border-color: var(--gold); transform: translateY(-1px); }
+.rel-chips b { font: 500 12.5px var(--ui-font); color: var(--muted); }
+.rawi-notes, .rawi-rel { max-width: 900px; }
+.rawi-notes .r-txt.note + .r-txt.note { margin-top: 6px; }
+.rijal { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 6px 0 10px; padding: 10px 14px; border-radius: 12px; background: var(--surface-2); font: 14px var(--ui-font); user-select: none; -webkit-user-select: none; animation: rise .2s ease-out both; }
+.rijal b { color: var(--gold); margin-inline-end: 6px; font-size: 12.5px; }
+.rijal a { display: inline-flex; align-items: center; gap: 6px; padding: 3px 12px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); font: 700 16px var(--read-font); }
+.rijal a:hover { border-color: var(--gold); color: var(--primary); }
+.rijal a i { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); }
+.rijal span { color: var(--muted); font-size: 12px; }
+.rijal em { color: var(--muted); font-style: normal; }
 /* ── الفهارس ── */
 .tab { height: 36px; padding: 0 22px; display: inline-grid; place-items: center; border-radius: 999px; border: 1px solid rgba(217, 197, 156, .35); color: rgba(244, 236, 217, .85); }
 .tab.on { background: var(--gold-soft); border-color: var(--gold-soft); color: var(--primary-deep); font-weight: 700; }

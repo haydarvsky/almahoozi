@@ -47,6 +47,7 @@
     image: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="m4 18 5.5-5 3.5 3 3-2.5 4 3.5"/></svg>',
     print: '<svg viewBox="0 0 24 24"><path d="M7 8V3h10v5M7 17H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="7" y="14" width="10" height="7" rx="1"/></svg>',
     share: '<svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="m8.3 10.7 7.4-4.3M8.3 13.3l7.4 4.3"/></svg>',
+    people: '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17.5" cy="9" r="2.4"/><path d="M16.5 14.2c2.6.3 4.5 2.5 4.5 5.3"/></svg>',
     link: '<svg viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>',
     notes: '<svg viewBox="0 0 24 24"><path d="M5 4h14v12l-4 4H5z"/><path d="M15 20v-4h4M8 9h8M8 13h5"/></svg>',
     list: '<svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>',
@@ -172,6 +173,7 @@
     else if (p[0] === 'read' && bookOf(p[1])) { nav('book'); viewReader(bookOf(p[1]), +p[2] || 1, +p[3] || 0, p[4], r.q); }
     else if (p[0] === 'h') { nav('book'); gotoHadith(BOOKS[0], +p[1]); }
     else if (p[0] === 'search') { nav('search'); viewSearch(r.q); }
+    else if (p[0] === 'rawi' && p[1]) { nav('index'); viewRawi(p[1]); }
     else if (p[0] === 'index') { nav('index'); viewIndex(p[1] === 'rawi' ? 'rawi' : 'sources'); }
     else { viewHome(); }
   }
@@ -434,7 +436,7 @@
         if (t === 'h') {
           var g = blk[5] ? '<a class="grade g-' + blk[5] + '" href="#/search?grade=' + blk[5] + '" title="حكم السند في حاشية المحقق">' + escH(blk[4]) + '</a>' : '';
           return '<article class="hadith"' + attr + '><header><span class="hnum" title="الرقم العام">' + blk[1] + '</span><span class="hloc">' + blk[2] + '</span>' + g +
-            '<span class="acts"><button data-act="copy" title="نسخ الحديث مع العزو">' + ICON.copy + '</button><button data-act="copyn" title="نسخ مع الحواشي">' + ICON.notes + '</button><button data-act="link" title="نسخ رابط الحديث">' + ICON.link + '</button><button data-act="img" title="تحميل الحديث مع تعليقه صورةً PNG">' + ICON.image + '</button><button data-act="share" title="مشاركة الحديث صورةً إلى التطبيقات">' + ICON.share + '</button></span></header>' +
+            '<span class="acts"><button data-act="copy" title="نسخ الحديث مع العزو">' + ICON.copy + '</button><button data-act="copyn" title="نسخ مع الحواشي">' + ICON.notes + '</button><button data-act="link" title="نسخ رابط الحديث">' + ICON.link + '</button><button data-act="img" title="تحميل الحديث مع تعليقه صورةً PNG">' + ICON.image + '</button><button data-act="share" title="مشاركة الحديث صورةً إلى التطبيقات">' + ICON.share + '</button><button data-act="rijal" title="رجال السند">' + ICON.people + '</button></span></header>' +
             '<p class="txt">' + body + '</p>' + inl + '</article>';
         }
         if (t === 'b') return '<header class="bab"' + attr + '><span class="bab-n">الباب ' + blk[1] + '</span><h3 class="txt">' + body + '</h3><button class="bab-pdf" data-act="pdfbab" title="طباعة الباب كاملاً أو حفظه PDF">' + ICON.print + '<span>PDF الباب</span></button></header>' + inl;
@@ -537,6 +539,18 @@
         if (withNotes && ids.length) out += '\n\nالحواشي:\n' + ids.map(function (id, j) { return '(' + (j + 1) + ') ' + stripLinks(vol.notes[id]); }).join('\n');
         return out;
       }
+      /* —— رجال السند: أسماء رواة الحديث روابطَ إلى صفحاتهم —— */
+      function showRijal(i, el) {
+        var old = $('.rijal', el); if (old) { old.remove(); return; }
+        loadRawi(b.id).then(function (R) {
+          var names = (R.byHadith[v + ':' + i] || []).slice(), txt = AR.norm(blockText(vol.blocks[i]));
+          names.sort(function (x, y) { return txt.indexOf(AR.norm(x.n)) - txt.indexOf(AR.norm(y.n)); });
+          var html = names.length ? names.map(function (x) { return '<a href="#/rawi/' + encodeURIComponent(x.n) + '">' + escH(x.n) + (x.kc ? '<i title="للمحقق تعليق عليه"></i>' : '') + '</a>'; }).join('<span>←</span>')
+            : '<em>لم يُستخرج لهذا الحديث سندٌ مفهرس.</em>';
+          $('header', el).insertAdjacentHTML('afterend', '<div class="rijal"><b>رجال السند</b>' + html + '</div>');
+        }).catch(function () { toast('تعذّر تحميل فهرس الرواة'); });
+      }
+
       /* —— التصدير: PDF عبر الطباعة، وصورة للمشاركة —— */
       function printBlocks(arr, label) {
         var area = $('#printArea');
@@ -767,6 +781,7 @@
           else if (act.dataset.act === 'copyn') copy(plainOf(i, true), 'نُسخ الحديث مع حواشيه');
           else if (act.dataset.act === 'img') shareImage(i);
           else if (act.dataset.act === 'share') shareImage(i, true);
+          else if (act.dataset.act === 'rijal') showRijal(i, blkEl);
           else if (act.dataset.act === 'pdfbab') { var si = sectionOf(meta, i), se = sectionEnd(meta, si, vol), arr = []; for (var x = meta.sections[si].s; x < se; x++) arr.push(x); printBlocks(arr, 'الباب ' + vol.blocks[i][1]); }
           else copy(location.origin + location.pathname + '#/h/' + vol.blocks[i][1], 'نُسخ رابط الحديث');
           return;
@@ -901,7 +916,7 @@
         if (browse) {
           // تصفّح فهرس: مصدر أو راوٍ — المواضع جاهزة في ملف الفهرس
           var kind = opts.src ? 'sources' : 'rawi', my0 = state;
-          var chip = '<p class="count"><a class="chip-x" href="#/index/' + kind + '">' + (opts.src ? 'المصدر' : 'الراوي') + ': <b>' + escH(browse) + '</b> ✕</a></p>';
+          var chip = '<p class="count"><a class="chip-x" href="' + (opts.src ? '#/index/sources' : '#/rawi/' + encodeURIComponent(browse)) + '">' + (opts.src ? 'المصدر' : 'الراوي') + ': <b>' + escH(browse) + '</b> ✕</a></p>';
           status(chip + '<div class="bar"><i style="width:30%"></i></div>');
           var hl = opts.rawi ? AR.compile('"' + opts.rawi + '"', {}) : (query ? AR.compile(query, opts) : null);
           getJSON('data/' + b.id + '/' + kind + '.json').then(function (list) {
@@ -1008,6 +1023,72 @@
     }).catch(fail);
   }
 
+  /* ───────── الرواة ───────── */
+  var rawiCache = {};
+  function loadRawi(id) {
+    return rawiCache[id] || (rawiCache[id] = getJSON('data/' + id + '/rawi.json').then(function (list) {
+      var byName = {}, byHadith = {};
+      list.forEach(function (x) {
+        byName[x.n] = x;
+        for (var k = 0; k < x.h.length; k += 2) { var key = x.h[k] + ':' + x.h[k + 1]; (byHadith[key] || (byHadith[key] = [])).push(x); }
+      });
+      return { list: list, byName: byName, byHadith: byHadith };
+    }).catch(function (e) { delete rawiCache[id]; throw e; }));
+  }
+  function noteOwners(vol) {
+    if (vol._owner) return vol._owner;
+    var o = {}, re = /\uE000(\d+)\uE001/g;
+    vol.blocks.forEach(function (blk, i) { var t = blockText(blk), m; re.lastIndex = 0; while ((m = re.exec(t))) o[+m[1]] = i; });
+    return (vol._owner = o);
+  }
+  function viewRawi(name) {
+    window.scrollTo(0, 0);
+    var b = BOOKS[0], alive = true;
+    cleanup = function () { alive = false; };
+    app.innerHTML = '<div class="wrap loading"><div class="spinner"></div></div>';
+    Promise.all([loadRawi(b.id), loadIndex(b.id)]).then(function (res) {
+      if (!alive) return;
+      var R = res[0], idx = res[1], x = R.byName[name];
+      if (!x) throw new Error('لا يوجد راوٍ بهذا الاسم في الفهرس: ' + name);
+      var rel = (x.rel || []).map(function (n) { return R.byName[n]; }).filter(Boolean);
+      var hl = AR.compile('"' + name + '"', {});
+      document.title = name + ' — فهرس الرواة';
+      app.innerHTML =
+        '<section class="search-head"><div class="hero-pattern" aria-hidden="true"></div><div class="wrap">' +
+          '<nav class="crumbs"><a href="#/index/rawi">فهرس الرواة</a><span>' + b.title + '</span></nav>' +
+          '<h1 class="rawi-name">' + escH(name) + '</h1>' +
+          '<div class="book-actions"><a class="btn solid" href="#/search?rawi=' + encodeURIComponent(name) + '">أحاديثه في الأسانيد (' + fmt(x.c) + ') ' + ICON.arrow + '</a>' +
+          '<a class="btn" style="background:transparent;color:var(--gold-soft);border-color:rgba(217,197,156,.4)" href="#/search?q=' + encodeURIComponent('"' + name + '"') + '&scope=notes">كل ذكرٍ له في الحواشي</a></div>' +
+        '</div></section>' +
+        (rel.length ? '<section class="wrap block rawi-rel"><header class="block-head"><h2>صيغ قريبة من الاسم</h2><p>قد تكون للراوي نفسه وقد يشترك فيها غيره، فلم تُدمج. اضغط صيغةً لفتح صفحتها.</p></header><div class="rel-chips">' +
+          rel.map(function (y) { return '<a href="#/rawi/' + encodeURIComponent(y.n) + '">' + escH(y.n) + '<b>' + fmt(y.c) + '</b></a>'; }).join('') + '</div></section>' : '') +
+        '<section class="wrap block rawi-notes"><header class="block-head"><h2>تعليقات المحقق عليه</h2><p>' + (x.kc ? fmt(x.kc) + ' موضعاً في الحواشي تكلّم فيها المحقق عن حاله، مرتّبةً من الأوفى.' : '') + '</p></header><div id="rkList"></div><div class="more" id="rkMore"></div></section>' + footer();
+      var refs = x.k || [], shown = 0;
+      if (!refs.length) { $('#rkList').innerHTML = '<p class="hint">لم أجد في الحواشي تعليقاً رجالياً بهذه الصيغة من الاسم. جرّب الصيغ القريبة أو «كل ذكرٍ له في الحواشي».</p>'; return; }
+      function more() {
+        var slice = [];
+        for (var k = shown * 2; k < refs.length && slice.length < 6; k += 2) slice.push([refs[k], refs[k + 1]]);
+        shown += slice.length;
+        $('#rkMore').innerHTML = '<div class="spinner"></div>';
+        Promise.all(slice.map(function (r) { return loadVol(b.id, r[0]); })).then(function (vols) {
+          if (!alive) return;
+          $('#rkList').insertAdjacentHTML('beforeend', slice.map(function (r, k) {
+            var vol = vols[k], meta = idx.volumes[r[0] - 1], bi = noteOwners(vol)[r[1]], note = stripLinks(vol.notes[r[1]]);
+            var nrm = AR.norm(name), paras = note.split('\n').filter(function (p) { return AR.norm(p).indexOf(nrm) >= 0; });
+            if (!paras.length) paras = note.split('\n');
+            var blk = bi !== undefined ? vol.blocks[bi] : null, hnum = blk && blk[0] === 'h' ? blk[1] : 0;
+            var href = bi !== undefined ? '#/read/' + b.id + '/' + r[0] + '/' + sectionOf(meta, bi) + '/b' + bi + '?q=' + encodeURIComponent('"' + name + '"') + '&n=' + r[1] : '#';
+            return '<a class="result in-note" href="' + href + '"><header><span class="r-kind">تعليق المحقق</span>' + (hnum ? '<span class="hnum">' + hnum + '</span>' : '') + '<span class="r-path">' + meta.name + '</span></header>' +
+              paras.map(function (p) { return '<p class="r-txt note">' + renderText(p, { ranges: AR.ranges(hl, p), notes: false, links: false }) + '</p>'; }).join('') + '</a>';
+          }).join(''));
+          $('#rkMore').innerHTML = shown * 2 < refs.length ? '<button class="btn" id="rkBtn">المزيد من التعليقات</button>' : (x.kc > shown ? '<p class="hint">عُرض أوفى ' + shown + ' تعليقاً من ' + fmt(x.kc) + '.</p>' : '');
+          var bt = $('#rkBtn'); if (bt) bt.addEventListener('click', more);
+        }).catch(fail);
+      }
+      more();
+    }).catch(fail);
+  }
+
   /* ───────── الفهارس: المصادر والرواة ───────── */
   function viewIndex(kind) {
     window.scrollTo(0, 0);
@@ -1018,7 +1099,7 @@
       '<section class="search-head"><div class="hero-pattern" aria-hidden="true"></div><div class="wrap">' +
         '<h1>فهارس ' + b.title + '</h1>' +
         '<div class="s-opts"><div class="og"><a class="tab' + (isSrc ? ' on' : '') + '" href="#/index/sources">المصادر</a><a class="tab' + (!isSrc ? ' on' : '') + '" href="#/index/rawi">الرواة</a></div></div>' +
-        '<p class="idx-lead">' + (isSrc ? 'المصادر التي خرّج منها المحقق أحاديث الكتاب في حواشيه. اضغط مصدراً لتصفّح كل ما خُرّج منه.' : 'أسماء الرواة كما وردت في أسانيد الأحاديث، بلا توحيدٍ بين صور الاسم الواحد (مثل «ابن أبي عمير» و«محمد بن أبي عمير»).') + '</p>' +
+        '<p class="idx-lead">' + (isSrc ? 'المصادر التي خرّج منها المحقق أحاديث الكتاب في حواشيه. اضغط مصدراً لتصفّح كل ما خُرّج منه.' : 'أسماء الرواة كما وردت في أسانيد الأحاديث. لكل راوٍ صفحة فيها تعليقات المحقق عليه وأحاديثه والصيغ القريبة من اسمه.') + '</p>' +
       '</div></section>' +
       '<section class="wrap block idx"><div class="filter">' + ICON.search + '<input id="idxF" type="search" placeholder="' + (isSrc ? 'ابحث عن مصدر…' : 'ابحث عن راوٍ…') + '" autocomplete="off"></div><p class="s-status" id="idxN"></p><div class="idx-list" id="idxList"><div class="spinner"></div></div></section>' + footer();
     getJSON('data/' + b.id + '/' + kind + '.json').then(function (list) {
@@ -1028,7 +1109,7 @@
         var nf = f ? AR.norm(f) : '', items = list.filter(function (x) { return !nf || AR.norm(x.n).indexOf(nf) >= 0; });
         $('#idxN').innerHTML = '<p>' + fmt(items.length) + (isSrc ? ' مصدراً' : ' اسماً') + '</p>';
         $('#idxList').innerHTML = items.slice(0, 600).map(function (x) {
-          return '<a class="idx-item" href="#/search?' + (isSrc ? 'src' : 'rawi') + '=' + encodeURIComponent(x.n) + '"><span class="idx-n">' + escH(x.n) + '</span><span class="idx-bar"><i style="width:' + Math.max(2, Math.sqrt(x.c / max) * 100) + '%"></i></span><b>' + fmt(x.c) + '</b></a>';
+          return '<a class="idx-item" href="' + (isSrc ? '#/search?src=' : '#/rawi/') + encodeURIComponent(x.n) + '"><span class="idx-n">' + escH(x.n) + '</span><span class="idx-bar"><i style="width:' + Math.max(2, Math.sqrt(x.c / max) * 100) + '%"></i></span><b>' + fmt(x.c) + '</b></a>';
         }).join('') || '<p class="hint">لا نتائج.</p>';
       }
       draw('');
