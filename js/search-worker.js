@@ -7,9 +7,10 @@ var loading = {};
 var current = 0;
 
 function load(book, v) {
-  if (vols[v]) return Promise.resolve(vols[v]);
-  if (loading[v]) return loading[v];
-  loading[v] = fetch('../data/' + book + '/v' + v + '.json').then(function (r) {
+  var key = book + '/' + v;
+  if (vols[key]) return Promise.resolve(vols[key]);
+  if (loading[key]) return loading[key];
+  loading[key] = fetch('../data/' + book + '/v' + v + '.json').then(function (r) {
     if (!r.ok) throw new Error('HTTP ' + r.status);
     return r.json();
   }).then(function (d) {
@@ -23,9 +24,9 @@ function load(book, v) {
       while ((m = re.exec(t))) owner[+m[1]] = i;
     }
     var nn = d.notes.map(function (n) { return AR.norm(n); });
-    return (vols[v] = { nb: nb, gr: gr, nn: nn, owner: owner });
+    return (vols[key] = { nb: nb, gr: gr, nn: nn, owner: owner });
   });
-  return loading[v];
+  return loading[key];
 }
 
 onmessage = function (e) {

@@ -455,3 +455,12 @@ sup.fn:hover, sup.fn.on { background: var(--gold); color: #fff; }
   #printArea .inl-notes { font-size: .74em; break-inside: avoid-page; }
   #printArea sup.fn { background: none; color: #8a6a35; }
 }
+
+/* ───────── تعدد الكتب ───────── */
+.hero-search select { flex: none; max-width: 150px; height: 40px; padding: 0 10px; border: 0; border-inline-start: 1px solid var(--line); background: none; color: var(--ink-2, var(--ink)); font-size: 14px; outline: 0; cursor: pointer; }
+.spine.own { background: linear-gradient(90deg, rgba(0, 0, 0, .35), transparent 12%, transparent 88%, rgba(255, 255, 255, .08)), linear-gradient(160deg, #6b3a1f, #3a1d0e); box-shadow: inset 0 0 0 5px #3d200f, inset 0 0 0 6.5px #c9a868, inset 0 0 0 11px #3d200f, inset 0 0 0 12px rgba(201, 168, 104, .5), 6px 10px 22px rgba(0, 0, 0, .28); }
+.spine span { font-size: clamp(16px, 2.2vw, 22px); }
+.search-head > .wrap > .s-opts:first-of-type { margin-top: 10px; }
+@media (max-width: 560px) {
+  .hero-search select { max-width: 92px; font-size: 13px; padding: 0 6px; }
+}
