@@ -25,7 +25,7 @@
       note: NOTE
     },
     { id: 'bihar', title: 'بحار الأنوار', full: 'بحار الأنوار الجامعة لدرر أخبار الأئمة الأطهار', author: 'العلامة الشيخ محمد باقر المجلسي', role: 'حقّقه وصحّح أسانيده',
-      blurb: 'الموسوعة الحديثية الكبرى في العقائد والتاريخ والأخلاق، بتخريج أحاديثها وبيان أسانيدها. المنشور منها أحد عشر جزءاً.', note: 'نعبّر في الأعمّ الأغلب عن الموثّق بالصحيح، لأسباب ذكرناها في ملحق رقم: 1.' },
+      blurb: 'الموسوعة الحديثية الكبرى في العقائد والتاريخ والأخلاق، بتخريج أحاديثها وبيان أسانيدها. المنشور منها عشرة أجزاء.', note: 'نعبّر في الأعمّ الأغلب عن الموثّق بالصحيح، لأسباب ذكرناها في ملحق رقم: 1.' },
     { id: 'faqih', title: 'من لا يحضره الفقيه', full: 'من لا يحضره الفقيه', author: SADUQ, role: 'حقّقه وصحّح أسانيده',
       blurb: 'ثاني الكتب الأربعة في أحاديث الأحكام، كاملاً في خمسة أجزاء مع الحكم على أسانيده.', note: NOTE },
     { id: 'kamal', title: 'كمال الدين وتمام النعمة', full: 'كمال الدين وتمام النعمة', author: SADUQ, role: 'حقّقه وصحّح أسانيده', publisher: CENTER,
@@ -106,6 +106,8 @@
   var DEFAULTS = { theme: 'light', size: 21, font: 'saad', tashkeel: true, notes: 'side' };
   var settings = Object.assign({}, DEFAULTS);
   try { Object.assign(settings, JSON.parse(localStorage.getItem('mahoozi.settings') || '{}')); } catch (e) { /* تخزين غير متاح */ }
+  var FONTS = [['saad', 'الخط الأول'], ['majalla', 'الخط الثاني'], ['lotus', 'الخط الثالث']];
+  if (!FONTS.some(function (f) { return f[0] === settings.font; })) settings.font = 'saad';   // خطوط الإصدار السابق (أميري، نسخ)
   function saveSettings() { try { localStorage.setItem('mahoozi.settings', JSON.stringify(settings)); } catch (e) { /* يُتجاهل */ } }
   function getLast() { try { return JSON.parse(localStorage.getItem('mahoozi.last') || 'null'); } catch (e) { return null; } }
   function setLast(o) { try { localStorage.setItem('mahoozi.last', JSON.stringify(o)); } catch (e) { /* يُتجاهل */ } }
@@ -219,6 +221,7 @@
     else if (p[0] === 'h') { nav('book'); gotoHadith(BOOKS[0], +p[1]); }
     else if (p[0] === 'books') { nav('book'); viewBooks(); }
     else if (p[0] === 'search') { nav('search'); viewSearch(r.q); }
+    else if (p[0] === 'qa') { nav('qa'); viewQA(); }
     else if (p[0] === 'rawi' && p[2] && bookOf(p[1])) { nav('index'); viewRawi(bookOf(p[1]), p[2]); }
     else if (p[0] === 'rawi' && p[1]) { nav('index'); viewRawi(BOOKS[0], p[1]); }
     else if (p[0] === 'index') { nav('index'); viewIndex(p[1] === 'rawi' ? 'rawi' : 'sources', bookOf(p[2]) || BOOKS[0]); }
@@ -246,7 +249,7 @@
     var tag = b.own ? 'تأليف' : 'تحقيق';
     var meta = c ? [tag, volsWord(c.vols), c.hadiths ? fmt(c.hadiths) + ' حديثاً' : ''].filter(Boolean).join(' · ') : tag;
     return '<a class="book-card" href="#/book/' + b.id + '">' +
-      '<div class="spine' + (b.own ? ' own' : '') + '" aria-hidden="true"><span>' + b.title + '</span></div>' +
+      '<img class="cover" src="assets/covers/' + b.id + '.webp" alt="غلاف ' + b.title + '" width="640" height="954" loading="lazy" decoding="async">' +
       '<div class="book-info"><span class="tag">' + meta + '</span><h3>' + b.title + '</h3>' + (b.full !== b.title ? '<p class="book-full">' + b.full + '</p>' : '') +
       '<p class="book-by">' + (b.own ? 'تأليف سماحة الشيخ أحمد الماحوزي' : 'تأليف ' + b.author) + '</p><p>' + b.blurb + '</p><span class="btn">تصفّح الكتاب ' + ICON.arrow + '</span></div>' +
     '</a>';
@@ -300,6 +303,7 @@
           '<article><span class="f-ic">' + ICON.copy + '</span><h3>نسخٌ وإحالة</h3><p>انسخ الحديث مع عزوه ورقمه، أو مع حواشيه، أو شارك رابطاً مباشراً يفتح على الحديث نفسه.</p></article>' +
         '</div>' +
       '</section>' +
+      '<section class="wrap block"><a class="qa-teaser" href="#/qa"><span class="qa-badge">قريباً</span><div><h3>سجل الأسئلة والأجوبة</h3><p>أسئلة القرّاء وأجوبة سماحة الشيخ عليها، في سجلٍّ يُبحث فيه ويُحال إليه.</p></div>' + ICON.arrow + '</a></section>' +
       footer();
     $('#heroSearch').addEventListener('submit', function (e) {
       e.preventDefault(); var q = $('input', this).value.trim(), bk = $('#heroBook').value;
@@ -313,6 +317,32 @@
         .map(function (s) { return '<div class="stat"><b>' + s[0] + '</b><span>' + s[1] + '</span></div>'; }).join('') +
         (last ? '<a class="resume" href="' + escH(last.hash) + '"><span>تابع القراءة</span><b>' + escH(last.label) + '</b></a>' : '');
     }).catch(function () { /* الإحصاءات تكميلية */ });
+  }
+  /* ───────── سجل الأسئلة والأجوبة (قريباً) ─────────
+     لاحقاً: أسئلة الزوار تُرسل من هنا، والشيخ يجيب من حسابٍ خاصٍّ به، وتُنشر الأجوبة في هذا السجل. */
+  function viewQA() {
+    window.scrollTo(0, 0);
+    document.title = 'سجل الأسئلة والأجوبة — مكتبة الشيخ أحمد الماحوزي';
+    app.innerHTML =
+      '<section class="search-head"><div class="hero-pattern" aria-hidden="true"></div><div class="wrap">' +
+        '<h1>سجل الأسئلة والأجوبة</h1>' +
+        '<p class="idx-lead">أسئلة القرّاء في الحديث والرجال والفقه، وأجوبة سماحة الشيخ أحمد الماحوزي عليها، مجموعةً في سجلٍّ واحدٍ يُبحث فيه ويُحال إليه.</p>' +
+      '</div></section>' +
+      '<section class="wrap block qa">' +
+        '<div class="qa-soon"><span class="qa-badge">قريباً</span>' +
+          '<h2>يُفتح السجل قريباً بإذن الله</h2>' +
+          '<p>نعمل على تهيئة طريقةٍ يرسل بها الزوّار أسئلتهم من هذه الصفحة، فتصل إلى سماحة الشيخ عبر حسابٍ خاصٍّ به في الموقع، ثم تُنشر الأجوبة هنا مرتّبةً ومصنّفة.</p>' +
+          '<ol class="qa-steps">' +
+            '<li><b>السؤال</b><span>يكتب الزائر سؤاله ويحدّد بابه: حديث، رجال، فقه، أو غير ذلك.</span></li>' +
+            '<li><b>الجواب</b><span>يطّلع الشيخ على الأسئلة في حسابه الخاص ويجيب عنها.</span></li>' +
+            '<li><b>النشر</b><span>يظهر السؤال وجوابه في السجل، مع تاريخه وروابط الأحاديث المذكورة فيه.</span></li>' +
+          '</ol>' +
+        '</div>' +
+        '<div class="qa-preview" aria-hidden="true">' +
+          '<article class="qa-item"><header><span class="qa-tag">رجال</span><span class="qa-date">—</span></header><p class="qa-q">سيظهر نصّ السؤال هنا…</p><p class="qa-a">وهنا جواب سماحة الشيخ.</p></article>' +
+          '<article class="qa-item"><header><span class="qa-tag">حديث</span><span class="qa-date">—</span></header><p class="qa-q">سيظهر نصّ السؤال هنا…</p><p class="qa-a">وهنا جواب سماحة الشيخ.</p></article>' +
+        '</div>' +
+      '</section>' + footer();
   }
   function footer() {
     return '<footer class="foot"><div class="wrap"><span class="name-mark sm" aria-hidden="true"></span><p>المكتبة الرقمية لمؤلفات وتحقيقات سماحة الشيخ أحمد الماحوزي</p></div></footer>';
@@ -351,7 +381,9 @@
           '<p class="vol-m">' + (m.h ? 'الأحاديث ' + fmt(m.h[0]) + ' – ' + fmt(m.h[1]) : m.sections.length + ' عنواناً') + '</p></a>';
       }).join('');
       app.innerHTML =
-        '<section class="book-hero"><div class="hero-pattern" aria-hidden="true"></div><div class="wrap">' +
+        '<section class="book-hero"><div class="hero-pattern" aria-hidden="true"></div><div class="wrap book-hero-grid">' +
+          '<img class="hero-cover" src="assets/covers/' + b.id + '.webp" alt="غلاف ' + b.title + '" width="640" height="954">' +
+          '<div class="book-hero-text">' +
           '<nav class="crumbs"><a href="#/">الرئيسة</a><span>المؤلفات والتحقيقات</span></nav>' +
           '<h1>' + b.full + '</h1>' +
           '<p class="by">' + (b.own ? '' : 'تأليف ' + b.author) + '</p>' +
@@ -362,7 +394,7 @@
             (uq && idx.hadiths ? '<form class="goto" id="gotoForm"><input type="number" min="1" placeholder="رقم الحديث" aria-label="رقم الحديث"><button class="btn" type="submit">انتقل</button></form>' : '') +
             '<a class="btn" style="background:transparent;color:var(--gold-soft);border-color:rgba(217,197,156,.4)" href="#/search?book=' + b.id + '">ابحث في الكتاب</a>' +
             '<a class="btn" style="background:transparent;color:var(--gold-soft);border-color:rgba(217,197,156,.4)" href="#/index/rawi/' + b.id + '">فهرس الرواة</a></div>' +
-        '</div></section>' +
+        '</div></div></section>' +
         (totalG ? '<section class="wrap block">' +
           '<header class="block-head"><h2>أحكام الأسانيد في التحقيق</h2><p>توزيع ' + fmt(totalG) + ' حديثاً نصّ المحقق على حكم سندها في الحاشية. اضغط على صنفٍ لتصفّح أحاديثه.</p></header>' +
           '<div class="gbar">' + bar + '</div><div class="glegend">' + legend + '</div>' +
@@ -449,7 +481,7 @@
           '<label>الحواشي</label>' + seg('notes', [['side', 'جانبية'], ['inline', 'تحت النص'], ['off', 'مخفية']]) +
           '<label>التشكيل</label>' + seg('tashkeel', [[true, 'ظاهر'], [false, 'مخفي']]) +
           '<label>حجم الخط</label><div class="seg"><button data-size="-1" aria-label="تصغير">أ−</button><span class="size-v">' + settings.size + '</span><button data-size="1" aria-label="تكبير">أ+</button></div>' +
-          '<label>الخط</label>' + seg('font', [['saad', 'صقال سعد'], ['amiri', 'أميري'], ['naskh', 'نسخ']]) +
+          '<label>الخط</label>' + seg('font', FONTS) +
           '<label>السمة</label>' + seg('theme', [['light', 'فاتحة'], ['sepia', 'ورقية'], ['dark', 'داكنة']]);
       }
       drawSettings();
@@ -630,7 +662,7 @@
         var area = $('#printArea');
         if (!area) { area = document.createElement('div'); area.id = 'printArea'; document.body.appendChild(area); }
         var s = meta.sections[sectionOf(meta, arr[0])];
-        area.innerHTML = '<header class="p-head"><span class="name-mark sm"></span><div><b>' + b.full + '</b><span>' + credit(b) + '</span></div></header>' +
+        area.innerHTML = '<header class="p-head"><div><b>' + b.full + '</b><span>' + credit(b) + '</span></div></header>' +
           '<p class="p-path">' + [idx.volumes.length > 1 ? meta.name : '', s.k, s.a, s.n ? (s.w || 'الباب') + ' ' + s.n : ''].filter(Boolean).join(' · ') + '</p>' +
           '<div class="text">' + arr.map(function (k) { return blockHTML(k, true); }).join('') + '</div>' +
           '<footer class="p-foot">' + location.origin + location.pathname + '</footer>';
@@ -652,9 +684,8 @@
         var C = { bg: '#f6f1e6', card: '#fffdf8', ink: '#1c2a27', ink2: '#44524d', green: '#0f4a42', deep: '#0a322d', gold: '#a8834a', goldSoft: '#d9c59c', quote: '#0d5b4c', line: '#e2d9c5' };
         var GC = { s: '#1d7a55', k: '#24808f', h: '#4a68b5', q: '#a7751f', m: '#6d7a2a', r: '#8a7460', d: '#b4473a', o: '#7a857f' };
         toast('جارٍ تجهيز الصور…');
-        var logo = new Image();
-        Promise.all([document.fonts.load('700 ' + FS + 'px ' + fam, 'بسم'), document.fonts.load(FS + 'px ' + fam, 'بسم'),
-          new Promise(function (res) { logo.onload = res; logo.onerror = res; logo.src = 'assets/name.svg'; })]).then(function () {
+        // الترويسة خلفيةٌ خضراء بنقشها وحده، بلا مخطوطة الاسم (طلب المستخدم ١٠ أكتوبر ٢٠٢٦)
+        Promise.all([document.fonts.load('700 ' + FS + 'px ' + fam, 'بسم'), document.fonts.load(FS + 'px ' + fam, 'بسم')]).then(function () {
           var mc = document.createElement('canvas').getContext('2d');
           var font = function (size, bold) { return (bold ? '700 ' : '') + size + 'px ' + fam; };
           function words(text, size, bold, numbered) {
@@ -773,12 +804,7 @@
               ctx.save(); ctx.translate(px, py); ctx.beginPath(); ctx.moveTo(22, 8); ctx.bezierCurveTo(31, 11, 35, 17, 34, 26); ctx.bezierCurveTo(25, 28, 18, 24, 16, 16); ctx.bezierCurveTo(16, 12, 18, 9, 22, 8); ctx.stroke(); ctx.restore();
             }
             ctx.restore();
-            if (logo.naturalWidth) {
-              var lw = 600, lhh = lw * 58.58 / 299.26, tmp = document.createElement('canvas'); tmp.width = lw * 2; tmp.height = Math.ceil(lhh * 2);
-              var tc = tmp.getContext('2d'); tc.drawImage(logo, 0, 0, tmp.width, tmp.height); tc.globalCompositeOperation = 'source-in'; tc.fillStyle = '#e3cd9a'; tc.fillRect(0, 0, tmp.width, tmp.height);
-              ctx.drawImage(tmp, (W - lw) / 2, top - 218, lw, lhh);
-            }
-            ctx.direction = 'rtl'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(244,236,217,.85)'; ctx.font = font(27);
+            ctx.direction = 'rtl'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(244,236,217,.88)'; ctx.font = font(28);
             ctx.fillText([b.title, idx.volumes.length > 1 ? meta.name : '', s.a, s.n ? (s.w || 'الباب') + ' ' + s.n : ''].filter(Boolean).join('  ·  '), W / 2, top - 46, W - M * 2);
             // البطاقة
             ctx.save(); ctx.shadowColor = 'rgba(40,30,10,.18)'; ctx.shadowBlur = 44; ctx.shadowOffsetY = 14;
@@ -1143,26 +1169,46 @@
         '</div></section>' +
         (rel.length ? '<section class="wrap block rawi-rel"><header class="block-head"><h2>صيغ قريبة من الاسم</h2><p>قد تكون للراوي نفسه وقد يشترك فيها غيره، فلم تُدمج. اضغط صيغةً لفتح صفحتها.</p></header><div class="rel-chips">' +
           rel.map(function (y) { return '<a href="' + rawiHref(b, y.n) + '">' + escH(y.n) + '<b>' + fmt(y.c) + '</b></a>'; }).join('') + '</div></section>' : '') +
-        '<section class="wrap block rawi-notes"><header class="block-head"><h2>تعليقات المحقق عليه</h2><p>' + (x.kc ? fmt(x.kc) + ' موضعاً في الحواشي تكلّم فيها المحقق عن حاله، مرتّبةً من الأوفى.' : '') + '</p></header><div id="rkList"></div><div class="more" id="rkMore"></div></section>' + footer();
+        '<section class="wrap block rawi-notes"><header class="block-head"><h2>تعليقات المحقق عليه</h2><p>' + (x.kc ? fmt(x.kc) + ' موضعاً في الحواشي تكلّم فيها المحقق عن حاله، مرتّبةً من الأوفى. يظهر من كل تعليقٍ الموضعُ الذي ذُكر فيه، ويُفتح كاملاً بالضغط عليه.' : '') + '</p></header><ol class="rk-list" id="rkList"></ol><div class="more" id="rkMore"></div></section>' + footer();
       var refs = x.k || [], shown = 0;
-      if (!refs.length) { $('#rkList').innerHTML = '<p class="hint">لم أجد في الحواشي تعليقاً رجالياً بهذه الصيغة من الاسم. جرّب الصيغ القريبة أو «كل ذكرٍ له في الحواشي».</p>'; return; }
+      if (!refs.length) { $('#rkList').outerHTML = '<p class="hint">لم أجد في الحواشي تعليقاً رجالياً بهذه الصيغة من الاسم. جرّب الصيغ القريبة أو «كل ذكرٍ له في الحواشي».</p>'; return; }
+      /* مقتطف التعليق: الجملة التي ذُكر فيها الراوي وما يجاورها، مقطوعةً عند الفواصل لا وسط الكلام */
+      function excerpt(p, rs) {
+        if (!rs.length || p.length <= 420) return { t: p, r: rs, cut: false };
+        var a = Math.max(0, rs[0][0] - 170), e = Math.min(p.length, rs[0][1] + 250);
+        if (a > 0) { var s1 = Math.max(p.lastIndexOf('، ', rs[0][0]), p.lastIndexOf('. ', rs[0][0])); a = s1 >= a - 60 && s1 > 0 ? s1 + 2 : (p.indexOf(' ', a) + 1 || a); }
+        if (e < p.length) { var e1 = p.indexOf('، ', e - 40); var e2 = p.indexOf('. ', e - 40); var ee = [e1, e2].filter(function (z) { return z > 0 && z < e + 80; }); e = ee.length ? Math.min.apply(null, ee) + 1 : (p.lastIndexOf(' ', e) > rs[0][1] ? p.lastIndexOf(' ', e) : e); }
+        var t = p.slice(a, e);
+        return { t: (a > 0 ? '… ' : '') + t + (e < p.length ? ' …' : ''), r: rs.map(function (q) { return [q[0] - a + (a > 0 ? 2 : 0), q[1] - a + (a > 0 ? 2 : 0)]; }).filter(function (q) { return q[0] >= 0 && q[1] <= t.length + 2; }), cut: true };
+      }
       function more() {
         var slice = [];
-        for (var k = shown * 2; k < refs.length && slice.length < 6; k += 2) slice.push([refs[k], refs[k + 1]]);
-        shown += slice.length;
+        for (var k = shown * 2; k < refs.length && slice.length < 8; k += 2) slice.push([refs[k], refs[k + 1]]);
         $('#rkMore').innerHTML = '<div class="spinner"></div>';
         Promise.all(slice.map(function (r) { return loadVol(b.id, r[0]); })).then(function (vols) {
           if (!alive) return;
           $('#rkList').insertAdjacentHTML('beforeend', slice.map(function (r, k) {
             var vol = vols[k], meta = idx.volumes[r[0] - 1], bi = noteOwners(vol)[r[1]], note = stripLinks(vol.notes[r[1]]);
-            var nrm = AR.norm(name), paras = note.split('\n').filter(function (p) { return AR.norm(p).indexOf(nrm) >= 0; });
-            if (!paras.length) paras = note.split('\n');
+            var all = note.split('\n').filter(Boolean), nrm = AR.norm(name);
+            var hit = all.filter(function (p) { return AR.norm(p).indexOf(nrm) >= 0; });
+            if (!hit.length) hit = all.slice(0, 1);
             var blk = bi !== undefined ? vol.blocks[bi] : null, hnum = blk && blk[0] === 'h' ? blk[1] : 0;
-            var href = bi !== undefined ? '#/read/' + b.id + '/' + r[0] + '/' + sectionOf(meta, bi) + '/b' + bi + '?q=' + encodeURIComponent('"' + name + '"') + '&n=' + r[1] : '#';
-            return '<a class="result in-note" href="' + href + '"><header><span class="r-kind">تعليق المحقق</span>' + (hnum ? '<span class="hnum">' + hnum + '</span>' : '') + '<span class="r-path">' + (idx.volumes.length > 1 ? meta.name : b.title) + '</span></header>' +
-              paras.map(function (p) { return '<p class="r-txt note">' + renderText(p, { ranges: AR.ranges(hl, p), notes: false, links: false }) + '</p>'; }).join('') + '</a>';
+            var sec = bi !== undefined ? meta.sections[sectionOf(meta, bi)] : null;
+            var href = bi !== undefined ? '#/read/' + b.id + '/' + r[0] + '/' + sectionOf(meta, bi) + '/b' + bi + '?q=' + encodeURIComponent('"' + name + '"') + '&n=' + r[1] : '';
+            var cut = false;
+            var body = hit.slice(0, 2).map(function (p) {
+              var ex = excerpt(p, AR.ranges(hl, p)); cut = cut || ex.cut;
+              return '<p class="rk-t">' + renderText(ex.t, { ranges: ex.r, notes: false, links: false }) + '</p>';
+            }).join('');
+            if (hit.length > 2 || all.length > hit.length) cut = true;
+            var where = [idx.volumes.length > 1 ? meta.name : '', sec && sec.n ? (sec.w || 'الباب') + ' ' + sec.n : '', sec ? sec.t.slice(0, 70) + (sec.t.length > 70 ? '…' : '') : ''].filter(Boolean).join(' · ');
+            return '<li class="rk"><header>' + (hnum ? '<a class="rk-h" href="' + href + '">الحديث <b>' + hnum + '</b></a>' : '<span class="rk-h">حاشية</span>') +
+              '<span class="rk-where">' + escH(where) + '</span></header>' + body +
+              (cut ? '<details class="rk-full"><summary>التعليق كاملاً</summary><div>' + all.map(function (p) { return '<p>' + renderText(p, { ranges: AR.ranges(hl, p), notes: false, links: false }) + '</p>'; }).join('') + '</div></details>' : '') +
+              (href ? '<a class="rk-go" href="' + href + '">افتح الحديث في موضعه ' + ICON.arrow + '</a>' : '') + '</li>';
           }).join(''));
-          $('#rkMore').innerHTML = shown * 2 < refs.length ? '<button class="btn" id="rkBtn">المزيد من التعليقات</button>' : (x.kc > shown ? '<p class="hint">عُرض أوفى ' + shown + ' تعليقاً من ' + fmt(x.kc) + '.</p>' : '');
+          shown += slice.length;
+          $('#rkMore').innerHTML = shown * 2 < refs.length ? '<button class="btn" id="rkBtn">المزيد من التعليقات (' + fmt(refs.length / 2 - shown) + ')</button>' : (x.kc > shown ? '<p class="hint">عُرض أوفى ' + shown + ' تعليقاً من ' + fmt(x.kc) + '.</p>' : '');
           var bt = $('#rkBtn'); if (bt) bt.addEventListener('click', more);
         }).catch(fail);
       }

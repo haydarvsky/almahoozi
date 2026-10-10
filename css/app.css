@@ -4,6 +4,10 @@
 @font-face { font-family: 'Sakkal Saad'; src: url(../assets/fonts/SakkalSaad-Regular.woff2) format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
 @font-face { font-family: 'Sakkal Saad'; src: url(../assets/fonts/SakkalSaad-Medium.woff2) format('woff2'); font-weight: 500; font-style: normal; font-display: swap; }
 @font-face { font-family: 'Sakkal Saad'; src: url(../assets/fonts/SakkalSaad-Bold.woff2) format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Sakkal Majalla'; src: url(../assets/fonts/SakkalMajalla-Regular.woff2) format('woff2'); font-weight: 400; font-style: normal; font-display: swap; size-adjust: 112%; }
+@font-face { font-family: 'Sakkal Majalla'; src: url(../assets/fonts/SakkalMajalla-Bold.woff2) format('woff2'); font-weight: 700; font-style: normal; font-display: swap; size-adjust: 112%; }
+@font-face { font-family: 'Lotus'; src: url(../assets/fonts/Lotus-Light.woff2) format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Lotus'; src: url(../assets/fonts/Lotus-Bold.woff2) format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
 :root {
   --bg: #f6f1e6;
   --surface: #fffdf8;
@@ -22,7 +26,7 @@
   --hl-ink: #2b2000;
   --shadow: 0 1px 2px rgba(40, 30, 10, .05), 0 8px 28px rgba(40, 30, 10, .07);
   --read-size: 21px;
-  --read-font: 'Sakkal Saad', 'Amiri', 'Noto Naskh Arabic', serif;
+  --read-font: 'Sakkal Saad', serif;
   --ui-font: 'Sakkal Saad', 'IBM Plex Sans Arabic', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --top: 62px;
   --g-s: #1d7a55; --g-k: #24808f; --g-h: #4a68b5; --g-q: #a7751f; --g-m: #6d7a2a; --g-r: #8a7460; --g-d: #b4473a; --g-o: #7a857f;
@@ -36,9 +40,8 @@
   --hl: #7a5c00; --hl-ink: #fff3c4; --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 28px rgba(0, 0, 0, .35);
   --g-s: #4cc493; --g-k: #5cc0d0; --g-h: #8ea6ee; --g-q: #e0ad52; --g-m: #b3c264; --g-r: #c0a78f; --g-d: #ef8375; --g-o: #9aa59f;
 }
-:root[data-font="amiri"] { --read-font: 'Amiri', 'Noto Naskh Arabic', serif; }
-:root[data-font="naskh"] { --read-font: 'Noto Naskh Arabic', 'Amiri', serif; }
-:root[data-font="scheherazade"] { --read-font: 'Scheherazade New', 'Amiri', serif; }
+:root[data-font="majalla"] { --read-font: 'Sakkal Majalla', 'Sakkal Saad', serif; }
+:root[data-font="lotus"] { --read-font: 'Lotus', 'Sakkal Saad', serif; }   /* ما ينقص لوتس (– … والحروف اللاتينية) يُستعار من الخط الأول */
 
 * { box-sizing: border-box; }
 html, body { overflow-x: clip; }
@@ -440,10 +443,9 @@ sup.fn:hover, sup.fn.on { background: var(--gold); color: #fff; }
   body > *:not(#printArea) { display: none !important; }
   body { background: #fff !important; color: #000; padding: 0 !important; }
   #printArea { display: block; --ink: #111; --ink-2: #333; --surface: #fff; --surface-2: #f4f1ea; --line: #ccc; --primary: #0f4a42; --gold: #8a6a35; --gold-soft: #c9b88f; --quote: #0d5b4c; --muted: #555; }
-  .p-head { display: flex; align-items: center; gap: 16px; padding-bottom: 10px; border-bottom: 1.5px solid #8a6a35; }
-  .p-head .name-mark { width: 190px; margin: 0; background: #0f4a42; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .p-head div { display: flex; flex-direction: column; font: 13px var(--ui-font); color: #333; }
-  .p-head b { font: 700 17px var(--read-font); color: #000; }
+  .p-head { display: flex; align-items: center; justify-content: center; padding: 14px 18px; border-radius: 10px; background: linear-gradient(180deg, #0a322d, #0f4a42); border-bottom: 2px solid #a8834a; text-align: center; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .p-head div { display: flex; flex-direction: column; font: 12.5px var(--ui-font); color: #d9c59c; }
+  .p-head b { font: 700 17px var(--read-font); color: #f4ecd9; }
   .p-path { font: 12.5px var(--ui-font); color: #555; margin: 8px 0 4px; }
   .p-foot { margin-top: 18px; padding-top: 8px; border-top: 1px solid #ccc; font: 11px sans-serif; color: #777; direction: ltr; text-align: center; }
   #printArea .text { max-width: none; font-size: 15.5pt; line-height: 2; }
@@ -464,3 +466,67 @@ sup.fn:hover, sup.fn.on { background: var(--gold); color: #fff; }
 @media (max-width: 560px) {
   .hero-search select { max-width: 92px; font-size: 13px; padding: 0 6px; }
 }
+
+/* ───────── الأغلفة ───────── */
+.cover { flex: none; width: 132px; height: auto; aspect-ratio: 640 / 954; align-self: flex-start; border-radius: 3px 8px 8px 3px; box-shadow: 0 1px 2px rgba(0, 0, 0, .25), 6px 12px 26px rgba(20, 14, 4, .3); background: #1a2522; transition: transform .25s; }
+a.book-card:hover .cover { transform: rotate(-1.2deg) translateY(-2px); }
+.book-hero-grid { display: grid; grid-template-columns: auto 1fr; gap: 40px; align-items: center; }
+.hero-cover { width: 210px; height: auto; aspect-ratio: 640 / 954; border-radius: 4px 10px 10px 4px; box-shadow: 0 0 0 1px rgba(217, 197, 156, .25), 0 30px 60px rgba(0, 0, 0, .45); }
+@media (max-width: 760px) {
+  .book-hero-grid { grid-template-columns: 1fr; gap: 24px; }
+  .hero-cover { width: 150px; justify-self: center; }
+  .book-hero-text .crumbs { justify-content: center; }
+}
+@media (max-width: 560px) { .cover { width: 104px; } }
+
+/* ───────── تعليقات المحقق في صفحة الراوي ───────── */
+.rk-list { list-style: none; margin: 0; padding: 0; counter-reset: rk; display: grid; gap: 14px; }
+.rk { counter-increment: rk; position: relative; padding: 18px 22px 16px; padding-inline-start: 62px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); animation: rise .25s ease-out both; }
+.rk::before { content: counter(rk); position: absolute; inset-inline-start: 18px; top: 18px; width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; background: color-mix(in srgb, var(--gold) 15%, transparent); color: var(--gold); font: 700 14px var(--ui-font); }
+.rk header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-bottom: 8px; }
+.rk-h { font: 600 14px var(--ui-font); color: var(--muted); }
+a.rk-h:hover { color: var(--primary); }
+.rk-h b { display: inline-block; padding: 0 9px; margin-inline-start: 4px; border-radius: 7px; background: var(--primary); color: var(--on-primary); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.rk-where { font-size: 13px; color: var(--muted); }
+.rk-t { font: 19px/2.1 var(--read-font); color: var(--ink); text-align: start; }
+.rk-t + .rk-t { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line); }
+.rk .hl, .rk-full .hl { background: color-mix(in srgb, var(--gold) 24%, transparent); color: inherit; box-shadow: none; padding: 0 3px; border-radius: 4px; font-weight: 700; }
+.rk-full { margin-top: 10px; }
+.rk-full summary { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13.5px; color: var(--gold); list-style: none; }
+.rk-full summary::-webkit-details-marker { display: none; }
+.rk-full summary::before { content: '+'; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; border: 1px solid currentColor; font-size: 13px; line-height: 1; }
+.rk-full[open] summary::before { content: '−'; }
+.rk-full div { margin-top: 10px; padding: 12px 16px; border-radius: 12px; background: var(--surface-2); font: 17px/2 var(--read-font); color: var(--ink-2); }
+.rk-full div p + p { margin-top: 8px; }
+.rk-go { display: inline-flex; align-items: center; gap: 4px; margin-top: 10px; margin-inline-start: 16px; font-size: 13.5px; color: var(--primary); }
+:root[data-theme="dark"] .rk-go { color: var(--gold); }
+.rk-go svg { width: 15px; height: 15px; }
+@media (max-width: 560px) { .rk { padding: 14px 14px 12px; padding-inline-start: 14px; } .rk::before { display: none; } .rk-t { font-size: 17.5px; } }
+/* نتائج البحث في الحواشي: الصنف note نفسه يستعمله صندوق الحاشية الجانبي (flex) */
+.r-txt.note { display: block; }
+
+/* ───────── سجل الأسئلة والأجوبة ───────── */
+.qa { max-width: 900px; }
+.qa-soon { position: relative; padding: 34px 30px 30px; border-radius: 22px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); text-align: center; }
+.qa-badge { display: inline-block; padding: 3px 16px; border-radius: 999px; background: var(--gold); color: #1d1503; font-weight: 700; font-size: 13.5px; }
+.qa-soon h2 { margin-top: 14px; font: 700 28px/1.5 var(--read-font); color: var(--primary); }
+:root[data-theme="dark"] .qa-soon h2 { color: var(--gold); }
+.qa-soon > p { margin: 10px auto 0; max-width: 40em; color: var(--ink-2); font-size: 15.5px; }
+.qa-steps { list-style: none; counter-reset: st; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 26px 0 0; padding: 0; text-align: start; }
+.qa-steps li { counter-increment: st; padding: 16px 18px; border-radius: 14px; background: var(--surface-2); }
+.qa-steps b { display: flex; align-items: center; gap: 10px; font: 700 18px var(--read-font); }
+.qa-steps b::before { content: counter(st); display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--primary); color: var(--on-primary); font: 700 13px var(--ui-font); }
+.qa-steps span { display: block; margin-top: 6px; font-size: 14px; color: var(--ink-2); }
+.qa-preview { margin-top: 22px; display: grid; gap: 12px; opacity: .45; filter: grayscale(.3); pointer-events: none; }
+.qa-item { padding: 16px 20px; border-radius: 16px; border: 1px dashed var(--line); background: var(--surface); }
+.qa-item header { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 12.5px; color: var(--muted); }
+.qa-tag { padding: 1px 10px; border-radius: 999px; background: var(--surface-2); }
+.qa-q { font: 700 18px/1.9 var(--read-font); }
+.qa-a { font: 17px/1.9 var(--read-font); color: var(--ink-2); padding-inline-start: 14px; border-inline-start: 3px solid var(--gold-soft); margin-top: 4px; }
+.qa-teaser { display: flex; align-items: center; gap: 18px; padding: 22px 26px; border-radius: 20px; background: linear-gradient(120deg, var(--primary-deep), var(--primary)); color: var(--on-primary); border: 1px solid rgba(217, 197, 156, .3); transition: transform .2s, box-shadow .2s; }
+.qa-teaser:hover { transform: translateY(-2px); box-shadow: 0 18px 40px rgba(10, 50, 45, .25); }
+.qa-teaser div { flex: 1; }
+.qa-teaser h3 { font: 700 24px/1.4 var(--read-font); color: #f1dfb4; }
+.qa-teaser p { font-size: 14.5px; color: rgba(244, 236, 217, .78); }
+.qa-teaser svg { color: var(--gold-soft); }
+@media (max-width: 680px) { .qa-steps { grid-template-columns: 1fr; } .qa-soon { padding: 26px 18px; } .qa-teaser { flex-wrap: wrap; } }
