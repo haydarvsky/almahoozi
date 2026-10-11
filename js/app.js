@@ -289,7 +289,7 @@
               '<button type="submit">بحث</button></form>' +
             '<p class="hero-hint">يتجاوز البحثُ التشكيلَ والهمزات وصور الألف والياء والتاء المربوطة. جرّب: <a href="#/search?q=انما%20الاعمال%20بالنيات">إنما الأعمال بالنيات</a> · <a href="#/search?q=طلب%20العلم%20فريضة">طلب العلم فريضة</a></p>' +
           '</div>' +
-          '<figure class="hero-portrait"><div class="arch"><img src="assets/sheikh.jpg" alt="سماحة الشيخ أحمد الماحوزي يطالع كتاباً" width="1200" height="1200"></div></figure>' +
+          '<figure class="hero-portrait"><div class="arch"><img src="assets/sheikh.jpg" alt="سماحة الشيخ أحمد الماحوزي في مكتبته يحمل مخطوطةً" width="1200" height="1500"></div></figure>' +
         '</div>' +
         '<div class="wrap stats" id="stats"></div>' +
       '</section>' +
