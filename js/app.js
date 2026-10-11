@@ -99,6 +99,7 @@
     search: '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
     arrow: '<svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>',
     book: '<svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21a2 2 0 0 1 2-2h13v2H6"/></svg>',
+    pin: '<svg viewBox="0 0 24 24"><path d="M9 4h6l-1 6 4 3v2H6v-2l4-3z"/><path d="M12 15v6"/></svg>',
     gear: '<svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>'
   };
 
@@ -271,25 +272,87 @@
       '<section class="wrap block" id="booksList">' + booksHTML(null) + '</section>' + footer();
     loadCatalog().then(function (c) { var el = $('#booksList'); if (el) el.innerHTML = booksHTML(c); }).catch(function () { /* الأعداد تكميلية */ });
   }
+  /* ── رفّ الكتب: قائمةٌ يمنى تُزاح وتُثبَّت يدوياً، فيها كل الكتب وأجزاؤها ── */
+  function getPin() { try { return localStorage.getItem('mahoozi.shelf') === '1'; } catch (e) { return false; } }
+  function setPin(on) { try { localStorage.setItem('mahoozi.shelf', on ? '1' : '0'); } catch (e) { /* يُتجاهل */ } }
+  function shelfItems(c) {
+    var group = function (title, list) {
+      return '<h4>' + title + '</h4>' + list.map(function (b) {
+        var info = c && c[b.id], names = info ? info.names : [];
+        var meta = info ? volsWord(info.vols) + (info.hadiths ? ' · ' + fmt(info.hadiths) + ' حديثاً' : '') : (b.own ? 'تأليف' : 'تحقيق');
+        var row = '<a class="sh-book" href="#/book/' + b.id + '"><img src="assets/covers/' + b.id + '.webp" alt="" width="34" height="51" loading="lazy" decoding="async"><span><b>' + b.title + '</b><small>' + meta + '</small></span></a>';
+        if (names.length < 2) return '<div class="sh-item" data-t="' + escH(AR.norm(b.title + ' ' + b.full)) + '">' + row + '</div>';
+        return '<details class="sh-item" data-t="' + escH(AR.norm(b.title + ' ' + b.full)) + '"><summary aria-label="أجزاء ' + b.title + '">' + row + '<i class="sh-chev" aria-hidden="true"></i></summary>' +
+          '<ol class="sh-vols">' + names.map(function (n, k) { return '<li><a href="#/read/' + b.id + '/' + (k + 1) + '/0">' + escH(n) + '</a></li>'; }).join('') + '</ol></details>';
+      }).join('');
+    };
+    return group('التحقيقات', BOOKS.filter(function (b) { return !b.own; })) + group('المؤلفات', BOOKS.filter(function (b) { return b.own; }));
+  }
+  function shelfHTML() {
+    return '<button class="shelf-tab" id="shelfTab" type="button" aria-controls="shelf" aria-expanded="false">' + ICON.list + '<span>الكتب</span></button>' +
+      '<aside class="shelf" id="shelf" aria-label="قائمة الكتب">' +
+        '<header class="shelf-head"><h3>' + ICON.book + 'كل الكتب</h3>' +
+          '<button class="icon-btn" id="shelfPin" type="button" title="تثبيت القائمة" aria-pressed="false">' + ICON.pin + '</button>' +
+          '<button class="icon-btn" id="shelfClose" type="button" title="إغلاق" aria-label="إغلاق القائمة">' + ICON.close + '</button></header>' +
+        '<div class="shelf-filter">' + ICON.search + '<input id="shelfF" type="search" placeholder="اكتب اسم الكتاب…" aria-label="تصفية الكتب" autocomplete="off"></div>' +
+        '<nav class="shelf-list" id="shelfList">' + shelfItems(null) + '</nav>' +
+      '</aside><div class="shelf-scrim" id="shelfScrim"></div>';
+  }
+  function initShelf() {
+    var body = document.body, shelf = $('#shelf'), tab = $('#shelfTab'), pin = $('#shelfPin');
+    var wide = function () { return window.matchMedia('(min-width: 1101px)').matches; };
+    function sync() {
+      var pinned = body.classList.contains('shelf-pinned'), open = pinned || body.classList.contains('shelf-open');
+      tab.setAttribute('aria-expanded', String(open));
+      pin.setAttribute('aria-pressed', String(pinned));
+      pin.title = pinned ? 'إلغاء التثبيت' : 'تثبيت القائمة';
+    }
+    body.classList.add('has-shelf');
+    if (getPin() && wide()) body.classList.add('shelf-pinned');
+    sync();
+    tab.addEventListener('click', function () { body.classList.toggle('shelf-open'); sync(); if (body.classList.contains('shelf-open')) setTimeout(function () { $('#shelfF').focus({ preventScroll: true }); }, 260); });
+    $('#shelfClose').addEventListener('click', function () { body.classList.remove('shelf-open', 'shelf-pinned'); setPin(false); sync(); });
+    $('#shelfScrim').addEventListener('click', function () { body.classList.remove('shelf-open'); sync(); });
+    pin.addEventListener('click', function () {
+      var on = !body.classList.contains('shelf-pinned');
+      body.classList.toggle('shelf-pinned', on); body.classList.remove('shelf-open');
+      setPin(on); sync();
+    });
+    shelf.addEventListener('click', function (e) { if (e.target.closest('a') && !body.classList.contains('shelf-pinned')) { body.classList.remove('shelf-open'); sync(); } });
+    $('#shelfF').addEventListener('input', function () {
+      var f = AR.norm(this.value.trim());
+      $$('.sh-item', shelf).forEach(function (it) { it.hidden = !!f && it.dataset.t.indexOf(f) < 0; });
+      $$('.shelf-list h4', shelf).forEach(function (h) {
+        var n = h.nextElementSibling, any = false;
+        while (n && n.tagName !== 'H4') { if (!n.hidden) any = true; n = n.nextElementSibling; }
+        h.hidden = !any;
+      });
+    });
+    function onKey(e) { if (e.key === 'Escape' && body.classList.contains('shelf-open')) { body.classList.remove('shelf-open'); sync(); } }
+    document.addEventListener('keydown', onKey);
+    return function () { document.removeEventListener('keydown', onKey); };
+  }
+
   function viewHome() {
     window.scrollTo(0, 0);
     document.title = 'مكتبة الشيخ أحمد الماحوزي — المؤلفات والتحقيقات';
-    var last = getLast();
-    app.innerHTML =
+    var last = getLast(), mode = 'all';
+    app.innerHTML = shelfHTML() +
       '<section class="hero">' +
         '<div class="hero-pattern" aria-hidden="true"></div>' +
-        '<div class="wrap hero-grid">' +
-          '<div class="hero-text">' +
-            '<p class="eyebrow">المكتبة الرقمية لمؤلفات وتحقيقات</p>' +
-            '<h1 class="hero-name"><span class="name-mark" role="img" aria-label="سماحة الشيخ أحمد الماحوزي"></span></h1>' +
-            '<p class="hero-lead">نصوصٌ محقَّقة تُقرأ وتُنسخ ويُبحث فيها، وحواشي التحقيق والتخريج مرتبطةٌ بمواضعها من المتن كلمةً بكلمة.</p>' +
-            '<form class="hero-search" id="heroSearch" role="search">' + ICON.search +
-              '<input type="search" placeholder="ابحث عن حديث، راوٍ، باب، أو رقم حديث…" aria-label="بحث في المكتبة" autocomplete="off">' +
-              '<select id="heroBook" aria-label="الكتاب">' + BOOKS.map(function (b) { return '<option value="' + b.id + '">' + b.title + '</option>'; }).join('') + '</select>' +
-              '<button type="submit">بحث</button></form>' +
-            '<p class="hero-hint">يتجاوز البحثُ التشكيلَ والهمزات وصور الألف والياء والتاء المربوطة. جرّب: <a href="#/search?q=انما%20الاعمال%20بالنيات">إنما الأعمال بالنيات</a> · <a href="#/search?q=طلب%20العلم%20فريضة">طلب العلم فريضة</a></p>' +
+        '<div class="wrap hero-bar">' +
+          '<div class="hero-id">' +
+            '<div class="hero-ph"><img src="assets/sheikh-sm.jpg" alt="سماحة الشيخ أحمد الماحوزي" width="400" height="500"></div>' +
+            '<div><p class="eyebrow">المكتبة الرقمية لمؤلفات وتحقيقات</p>' +
+            '<h1 class="hero-name"><span class="name-mark" role="img" aria-label="سماحة الشيخ أحمد الماحوزي"></span></h1></div>' +
           '</div>' +
-          '<figure class="hero-portrait"><div class="arch"><img src="assets/sheikh.jpg" alt="سماحة الشيخ أحمد الماحوزي في مكتبته يحمل مخطوطةً" width="1200" height="1500"></div></figure>' +
+          '<form class="qs" id="heroSearch" role="search">' +
+            '<div class="qs-row">' + ICON.search +
+              '<input type="search" placeholder="ابحث عن حديث، راوٍ، باب، أو رقم حديث…" aria-label="بحث في المكتبة" autocomplete="off">' +
+              '<select id="heroBook" aria-label="الكتاب">' + bookOptions(null) + '</select>' +
+              '<button type="submit">بحث</button></div>' +
+            '<div class="og qs-modes" role="radiogroup" aria-label="طريقة البحث">' + MODES.map(function (m) { return '<button type="button" role="radio" data-v="' + m[0] + '" aria-checked="' + (m[0] === mode) + '"' + (m[0] === mode ? ' class="on"' : '') + '>' + m[1] + '</button>'; }).join('') + '</div>' +
+          '</form>' +
         '</div>' +
         '<div class="wrap stats" id="stats"></div>' +
       '</section>' +
@@ -299,18 +362,25 @@
         '<div class="features">' +
           '<article><span class="f-ic">' + ICON.notes + '</span><h3>الحاشية بجوار المتن</h3><p>اضغط رقم الحاشية فتظهر في لوحة جانبية مع تمييز موضعها، أو اعرضها أسفل كل حديث، أو أخفِها للقراءة الصافية.</p></article>' +
           '<article><span class="f-ic grade s">ص</span><h3>الحكم على الأسانيد</h3><p>يظهر حكم السند كما قرّره المحقق في حاشيته — صحيح، كالصحيح، حسن… — على رأس كل حديث، ويمكن التصفية به في البحث.</p></article>' +
-          '<article><span class="f-ic">' + ICON.search + '</span><h3>بحثٌ يفهم العربية</h3><p>بالتشكيل أو بدونه، مع توحيد الهمزات والألف المقصورة والتاء المربوطة، في المتن أو الحواشي أو كليهما.</p></article>' +
+          '<article><span class="f-ic">' + ICON.search + '</span><h3>بحثٌ يفهم العربية</h3><p>في جميع الكتب أو في كتابٍ واحد، بالتشكيل أو بدونه، مع توحيد الهمزات والألف المقصورة والتاء المربوطة، في المتن أو الحواشي أو كليهما.</p></article>' +
           '<article><span class="f-ic">' + ICON.copy + '</span><h3>نسخٌ وإحالة</h3><p>انسخ الحديث مع عزوه ورقمه، أو مع حواشيه، أو شارك رابطاً مباشراً يفتح على الحديث نفسه.</p></article>' +
         '</div>' +
       '</section>' +
       '<section class="wrap block"><a class="qa-teaser" href="#/qa"><span class="qa-badge">قريباً</span><div><h3>سجل الأسئلة والأجوبة</h3><p>أسئلة القرّاء وأجوبة سماحة الشيخ عليها، في سجلٍّ يُبحث فيه ويُحال إليه.</p></div>' + ICON.arrow + '</a></section>' +
       footer();
+    cleanup = initShelf();
+    $('.qs-modes').addEventListener('click', function (e) {
+      var t = e.target.closest('button'); if (!t) return;
+      mode = t.dataset.v;
+      $$('.qs-modes button').forEach(function (x) { var on = x === t; x.classList.toggle('on', on); x.setAttribute('aria-checked', String(on)); });
+    });
     $('#heroSearch').addEventListener('submit', function (e) {
-      e.preventDefault(); var q = $('input', this).value.trim(), bk = $('#heroBook').value;
-      if (q) location.hash = '#/search?q=' + encodeURIComponent(q) + (bk !== 'wasail' ? '&book=' + bk : '');
+      e.preventDefault(); var q = $('input', this).value.trim();
+      if (q) location.hash = searchHash(q, $('#heroBook').value, mode);
     });
     loadCatalog().then(function (c) {
       var el = $('#booksList'); if (el) el.innerHTML = booksHTML(c);
+      var sl = $('#shelfList'); if (sl) { sl.innerHTML = shelfItems(c); var f = $('#shelfF'); if (f && f.value) f.dispatchEvent(new Event('input')); }
       var st = $('#stats'); if (!st) return;
       var sum = function (k) { return Object.keys(c).reduce(function (a, id) { return a + (c[id][k] || 0); }, 0); };
       st.innerHTML = [[Object.keys(c).length, 'كتاباً'], [sum('vols'), 'جزءاً'], [fmt(sum('hadiths')), 'حديثاً'], [fmt(sum('notes')), 'حاشية تحقيق']]
@@ -365,7 +435,7 @@
     app.innerHTML = '<div class="wrap loading"><div class="spinner"></div></div>';
     document.title = b.title + ' — مكتبة الشيخ أحمد الماحوزي';
     loadIndex(b.id).then(function (idx) {
-      var uq = idx.unique !== false, qb = b.id === 'wasail' ? '' : '&book=' + b.id;
+      var uq = idx.unique !== false, qb = '&book=' + b.id;
       var totalG = GRADE_ORDER.reduce(function (a, k) { return a + (idx.grades[k] || 0); }, 0);
       var bar = GRADE_ORDER.filter(function (k) { return idx.grades[k]; }).map(function (k) {
         var n = idx.grades[k], pct = n / totalG * 100;
@@ -539,7 +609,7 @@
         }
         var attr = ' id="b' + i + '" data-b="' + i + '"' + (ids.length ? ' data-has="1"' : '');
         if (t === 'h') {
-          var g = blk[5] ? '<a class="grade g-' + blk[5] + '" href="#/search?grade=' + blk[5] + (b.id === 'wasail' ? '' : '&book=' + b.id) + '" title="حكم السند في حاشية المحقق">' + escH(blk[4]) + '</a>' : '';
+          var g = blk[5] ? '<a class="grade g-' + blk[5] + '" href="#/search?grade=' + blk[5] + '&book=' + b.id + '" title="حكم السند في حاشية المحقق">' + escH(blk[4]) + '</a>' : '';
           return '<article class="hadith"' + attr + '><header><span class="hnum" title="الرقم العام">' + blk[1] + '</span>' + (blk[2] ? '<span class="hloc">' + blk[2] + '</span>' : '') + g +
             '<span class="acts"><button data-act="copy" title="نسخ الحديث مع العزو">' + ICON.copy + '</button><button data-act="copyn" title="نسخ مع الحواشي">' + ICON.notes + '</button><button data-act="link" title="نسخ رابط الحديث">' + ICON.link + '</button><button data-act="img" title="تحميل الحديث مع تعليقه صورةً PNG">' + ICON.image + '</button><button data-act="share" title="مشاركة الحديث صورةً إلى التطبيقات">' + ICON.share + '</button><button data-act="rijal" title="رجال السند">' + ICON.people + '</button></span></header>' +
             '<p class="txt">' + body + '</p>' + inl + '</article>';
@@ -953,41 +1023,65 @@
     }).catch(function (e) { if (alive) fail(e); });
   }
 
-  /* ───────── البحث ───────── */
+  /* ───────── البحث ─────────
+     الافتراضي: جميع الكتب؛ واختيار كتابٍ بعينه يُضيّق البحث ويفتح تصفية الجزء.
+     النتيجة: [رتبة الكتاب في BOOKS، الجزء، الكتلة، الحاشية أو -1، الدرجة] */
   var worker = null, searchSeq = 0;
+  var MODES = [['any', 'أي كلمة'], ['phrase', 'مطابق تماماً'], ['all', 'جميع الكلمات']];
+  function bookOptions(sel) {
+    return '<option value="">جميع الكتب</option>' + BOOKS.map(function (x) { return '<option value="' + x.id + '"' + (x === sel ? ' selected' : '') + '>' + x.title + '</option>'; }).join('');
+  }
+  function searchHash(q, book, mode) {
+    var p = ['q=' + encodeURIComponent(q)];
+    if (book) p.push('book=' + book);
+    if (mode && mode !== 'all') p.push('mode=' + mode);
+    return '#/search?' + p.join('&');
+  }
   function viewSearch(q) {
     window.scrollTo(0, 0);
-    var b = bookOf(q.book) || BOOKS[0], alive = true, state = { hits: [], shown: 0, done: false, id: 0 };
-    cleanup = function () { alive = false; searchSeq++; };
     var opts = { scope: q.scope || 'all', mode: q.mode || 'all', whole: q.whole === '1', vol: +q.vol || 0, grade: q.grade || '', src: q.src || '', rawi: q.rawi || '' };
+    // تصفّح فهرسٍ (مصدر أو راوٍ) خاصٌّ بكتاب؛ والروابط القديمة بلا كتاب كانت للوسائل
+    var b = bookOf(q.book) || ((opts.src || opts.rawi) ? BOOKS[0] : null);
+    var alive = true, state = { hits: [], shown: 0, done: false, id: 0 };
+    cleanup = function () { alive = false; searchSeq++; };
     var query = q.q || '';
+    document.title = 'البحث — مكتبة الشيخ أحمد الماحوزي';
     app.innerHTML =
       '<section class="search-head"><div class="hero-pattern" aria-hidden="true"></div><div class="wrap">' +
-        '<h1>البحث في ' + b.title + '</h1>' +
-        '<div class="s-opts"><div class="og"><span>الكتاب</span><select id="sBook" aria-label="الكتاب">' + BOOKS.map(function (x) { return '<option value="' + x.id + '"' + (x === b ? ' selected' : '') + '>' + x.title + '</option>'; }).join('') + '</select></div></div>' +
-        '<form class="hero-search" id="sForm" role="search">' + ICON.search + '<input id="sInput" type="search" value="' + escH(query) + '" placeholder="كلمات، عبارة بين «علامتي تنصيص»، أو رقم حديث" autocomplete="off" aria-label="نص البحث"><button type="submit">بحث</button></form>' +
+        '<h1>البحث في ' + (b ? b.title : 'جميع الكتب') + '</h1>' +
+        '<form class="qs" id="sForm" role="search"><div class="qs-row">' + ICON.search +
+          '<input id="sInput" type="search" value="' + escH(query) + '" placeholder="كلمات، عبارة بين «علامتي تنصيص»، أو رقم حديث" autocomplete="off" aria-label="نص البحث">' +
+          '<select id="sBook" aria-label="الكتاب">' + bookOptions(b) + '</select>' +
+          '<button type="submit">بحث</button></div></form>' +
         '<div class="s-opts" id="sOpts"></div></div></section>' +
       '<section class="wrap results"><div class="s-status" id="sStatus"></div><div id="sList"></div><div class="more" id="sMore"></div></section>';
     var input = $('#sInput');
 
     $('#sBook').addEventListener('change', function () {
-      var p = ['q=' + encodeURIComponent(input.value.trim())]; if (this.value !== 'wasail') p.push('book=' + this.value);
+      var p = ['q=' + encodeURIComponent(input.value.trim())]; if (this.value) p.push('book=' + this.value);
+      if (opts.mode !== 'all') p.push('mode=' + opts.mode);
+      if (opts.scope !== 'all') p.push('scope=' + opts.scope);
+      if (opts.whole) p.push('whole=1');
+      if (opts.grade) p.push('grade=' + opts.grade);
       location.hash = '#/search?' + p.join('&');
     });
-    loadIndex(b.id).then(function (idx) {
+    Promise.all([b ? loadIndex(b.id) : null, loadCatalog().catch(function () { return null; })]).then(function (res) {
       if (!alive) return;
-      var uq = idx.unique !== false;
+      var idx = res[0], cat = res[1] || {};
+      var scopeBooks = b ? [b] : BOOKS;
+      var volsOf = function (x) { return x === b && idx ? idx.volumes.map(function (m) { return m.v; }) : (cat[x.id] ? cat[x.id].names.map(function (_, k) { return k + 1; }) : [1]); };
       var chip = function (key, val, label) { return '<button type="button" data-k="' + key + '" data-v="' + val + '"' + (String(opts[key]) === String(val) ? ' class="on"' : '') + '>' + label + '</button>'; };
+      var hasGrades = b ? GRADE_ORDER.some(function (k) { return idx.grades[k]; }) : true;
       function drawOpts() {
         $('#sOpts').innerHTML =
+          '<div class="og"><span>طريقة البحث</span>' + MODES.map(function (m) { return chip('mode', m[0], m[1]); }).join('') + '<button type="button" data-k="whole" data-v="' + !opts.whole + '"' + (opts.whole ? ' class="on"' : '') + '>كلمة كاملة</button></div>' +
           '<div class="og"><span>أين؟</span>' + chip('scope', 'all', 'المتن والحواشي') + chip('scope', 'matn', 'المتن') + chip('scope', 'notes', 'الحواشي') + '</div>' +
-          '<div class="og"><span>كيف؟</span>' + chip('mode', 'all', 'كل الكلمات') + chip('mode', 'phrase', 'العبارة نصّاً') + chip('mode', 'any', 'أي كلمة') + '<button type="button" data-k="whole" data-v="' + !opts.whole + '"' + (opts.whole ? ' class="on"' : '') + '>كلمة كاملة</button>' + '</div>' +
-          '<div class="og"><span>تصفية</span>' + (idx.volumes.length > 1 ? '<select data-k="vol" aria-label="الجزء"><option value="0">كل الأجزاء</option>' + idx.volumes.map(function (m) { return '<option value="' + m.v + '"' + (opts.vol === m.v ? ' selected' : '') + '>' + m.name + '</option>'; }).join('') + '</select>' : '') +
-          (GRADE_ORDER.some(function (k) { return idx.grades[k]; }) ? '<select data-k="grade" aria-label="حكم السند"><option value="">كل الأسانيد</option>' + GRADE_ORDER.filter(function (k) { return idx.grades[k]; }).map(function (k) { return '<option value="' + k + '"' + (opts.grade === k ? ' selected' : '') + '>سنده ' + GRADES[k] + '</option>'; }).join('') + '</select>' : '') + '</div>';
+          '<div class="og"><span>تصفية</span>' + (b && idx.volumes.length > 1 ? '<select data-k="vol" aria-label="الجزء"><option value="0">كل الأجزاء</option>' + idx.volumes.map(function (m) { return '<option value="' + m.v + '"' + (opts.vol === m.v ? ' selected' : '') + '>' + m.name + '</option>'; }).join('') + '</select>' : '') +
+          (hasGrades ? '<select data-k="grade" aria-label="حكم السند"><option value="">كل الأسانيد</option>' + GRADE_ORDER.filter(function (k) { return !b || idx.grades[k]; }).map(function (k) { return '<option value="' + k + '"' + (opts.grade === k ? ' selected' : '') + '>سنده ' + GRADES[k] + '</option>'; }).join('') + '</select>' : '') + '</div>';
       }
       function push() {
         var p = ['q=' + encodeURIComponent(input.value.trim())];
-        if (b.id !== 'wasail') p.push('book=' + b.id);
+        if (b) p.push('book=' + b.id);
         if (opts.scope !== 'all') p.push('scope=' + opts.scope);
         if (opts.mode !== 'all') p.push('mode=' + opts.mode);
         if (opts.whole) p.push('whole=1');
@@ -996,7 +1090,8 @@
         if (opts.src) p.push('src=' + encodeURIComponent(opts.src));
         if (opts.rawi) p.push('rawi=' + encodeURIComponent(opts.rawi));
         var h = '#/search?' + p.join('&');
-        if (location.hash === h) run(); else { history.replaceState(null, '', h); run(); }
+        if (location.hash !== h) history.replaceState(null, '', h);
+        run();
       }
       drawOpts();
       $('#sOpts').addEventListener('click', function (e) {
@@ -1013,44 +1108,55 @@
       input.addEventListener('input', function () { clearTimeout(typeT); typeT = setTimeout(push, 350); });
 
       function status(html) { $('#sStatus').innerHTML = html; }
+      function targets() {
+        var t = [];
+        scopeBooks.forEach(function (x) { (opts.vol && b ? [opts.vol] : volsOf(x)).forEach(function (v) { t.push([x.id, v]); }); });
+        return t;
+      }
+      function jumpLinks(n) {
+        if (!n) return '';
+        if (b) return idx.unique !== false && volOfHadith(idx, n) ? '<a class="jump" href="' + hadithHref(b, true, 0, 0, 0, n) + '">انتقل مباشرةً إلى الحديث رقم <b>' + n + '</b> ' + ICON.arrow + '</a>' : '';
+        var hits = BOOKS.filter(function (x) { var c = cat[x.id]; return c && c.unique !== false && c.h && n >= c.h[0] && n < c.h[1]; });
+        return hits.length ? '<div class="jump multi"><span>الحديث رقم <b>' + n + '</b> في:</span>' + hits.map(function (x) { return '<a href="' + hadithHref(x, true, 0, 0, 0, n) + '">' + x.title + '</a>'; }).join('') + '</div>' : '';
+      }
       function run() {
         query = input.value.trim();
         state = { hits: [], shown: 0, done: false, id: ++searchSeq };
         $('#sList').innerHTML = ''; $('#sMore').innerHTML = '';
         var numOnly = /^[\d٠-٩\s]+$/.test(query) && query, n = numOnly ? +AR.norm(query).replace(/ /g, '') : 0;
-        var jump = n && uq && volOfHadith(idx, n) ? '<a class="jump" href="' + hadithHref(b, true, 0, 0, 0, n) + '">انتقل مباشرةً إلى الحديث رقم <b>' + n + '</b> ' + ICON.arrow + '</a>' : '';
+        var jump = jumpLinks(n);
         var browse = opts.src || opts.rawi;
         if (browse) {
           // تصفّح فهرس: مصدر أو راوٍ — المواضع جاهزة في ملف الفهرس
-          var kind = opts.src ? 'sources' : 'rawi', my0 = state;
+          var kind = opts.src ? 'sources' : 'rawi', my0 = state, bi0 = BOOKS.indexOf(b);
           var chip = '<p class="count"><a class="chip-x" href="' + (opts.src ? '#/index/sources/' + b.id : rawiHref(b, browse)) + '">' + (opts.src ? 'المصدر' : 'الراوي') + ': <b>' + escH(browse) + '</b> ✕</a></p>';
           status(chip + '<div class="bar"><i style="width:30%"></i></div>');
           var hl = opts.rawi ? AR.compile('"' + opts.rawi + '"', {}) : (query ? AR.compile(query, opts) : null);
           getJSON('data/' + b.id + '/' + kind + '.json').then(function (list) {
             if (!alive || my0 !== state) return;
             var it = list.filter(function (x) { return x.n === browse; })[0];
-            if (it) for (var k = 0; k < it.h.length; k += 2) if (!opts.vol || opts.vol === it.h[k]) my0.hits.push([it.h[k], it.h[k + 1], -1, 1]);
+            if (it) for (var k = 0; k < it.h.length; k += 2) if (!opts.vol || opts.vol === it.h[k]) my0.hits.push([bi0, it.h[k], it.h[k + 1], -1, 1]);
             my0.done = true; finish(my0, hl, chip);
           }).catch(fail);
           return;
         }
         if (!query && !opts.grade) {
-          status('<div class="tips"><h3>كيف أبحث؟</h3><ul><li>اكتب الكلمات بأي صورة: <b>الصلوة</b>، <b>الصَّلاة</b>، <b>الصلاه</b> — كلّها سواء.</li><li>ضع العبارة بين علامتي تنصيص للمطابقة النصية: <b>«لا ضرر ولا ضرار»</b>.</li><li>اكتب رقماً للانتقال إلى الحديث مباشرة.</li><li>ابحث في الحواشي عن راوٍ أو مصدر: <b>الكافي الشريف</b>، <b>رجاله ثقات</b>.</li></ul></div>');
+          status('<div class="tips"><h3>كيف أبحث؟</h3><ul><li>البحث افتراضياً في <b>جميع الكتب</b>؛ واختر كتاباً من القائمة لتضييقه.</li><li><b>جميع الكلمات</b>: النصوص التي فيها كل الكلمات. <b>أي كلمة</b>: ما فيه واحدةٌ منها على الأقل. <b>مطابق تماماً</b>: العبارة بنصّها وترتيبها.</li><li>اكتب الكلمات بأي صورة: <b>الصلوة</b>، <b>الصَّلاة</b>، <b>الصلاه</b> — كلّها سواء.</li><li>اكتب رقماً للانتقال إلى الحديث مباشرة.</li></ul></div>');
           return;
         }
-        if (!worker) worker = new Worker('js/search-worker.js?v=2');
-        var my = state;
+        if (!worker) worker = new Worker('js/search-worker.js?v=3');
+        var my = state, list = targets();
         var compiled = query ? AR.compile(query, opts) : null;
         if (!compiled) {
           // تصفّح بحكم السند وحده: لا حاجة للعامل
           status(jump + '<div class="bar"><i style="width:8%"></i></div><p>جارٍ جمع الأحاديث…</p>');
-          var list = opts.vol ? [opts.vol] : idx.volumes.map(function (m) { return m.v; }), k = 0;
+          var k = 0;
           (function step() {
             if (!alive || my !== state) return;
             if (k >= list.length) { my.done = true; finish(my, null, jump); return; }
-            var v = list[k++];
-            loadVol(b.id, v).then(function (vol) {
-              vol.blocks.forEach(function (blk, i) { if (blk[0] === 'h' && blk[5] === opts.grade) my.hits.push([v, i, -1, 1]); });
+            var t = list[k++], bi = BOOKS.indexOf(bookOf(t[0]));
+            loadVol(t[0], t[1]).then(function (vol) {
+              vol.blocks.forEach(function (blk, i) { if (blk[0] === 'h' && blk[5] === opts.grade) my.hits.push([bi, t[1], i, -1, 1]); });
               status(jump + '<div class="bar"><i style="width:' + (k / list.length * 100) + '%"></i></div><p>' + fmt(my.hits.length) + ' حديثاً حتى الآن…</p>');
               if (my.shown === 0 && my.hits.length) more(my, null);
               step();
@@ -1058,34 +1164,37 @@
           })();
           return;
         }
-        status(jump + '<div class="bar"><i style="width:3%"></i></div><p>جارٍ تحميل نصوص الأجزاء للبحث (مرةً واحدة)…</p>');
+        status(jump + '<div class="bar"><i style="width:3%"></i></div><p>جارٍ تحميل نصوص ' + (b ? 'الأجزاء' : 'الكتب') + ' للبحث (مرةً واحدة)…</p>');
         worker.onmessage = function (e) {
           var m = e.data;
           if (!alive || m.id !== my.id) return;
           if (m.type === 'hits') {
-            m.hits.forEach(function (h) { my.hits.push([m.v, h[0], h[1], h[2]]); });
-            status(jump + '<div class="bar"><i style="width:' + (m.done / m.total * 100) + '%"></i></div><p>' + fmt(my.hits.length) + ' نتيجة · فُحص ' + m.done + ' من ' + m.total + ' جزءاً</p>');
+            var bi = BOOKS.indexOf(bookOf(m.book));
+            m.hits.forEach(function (h) { my.hits.push([bi, m.v, h[0], h[1], h[2]]); });
+            status(jump + '<div class="bar"><i style="width:' + (m.done / m.total * 100) + '%"></i></div><p>' + fmt(my.hits.length) + ' نتيجة · فُحص ' + m.done + ' من ' + m.total + ' جزءاً' + (b ? '' : ' · ' + bookOf(m.book).title) + '</p>');
             if (my.shown === 0 && my.hits.length >= 20) more(my, compiled);
           } else if (m.type === 'done') { my.done = true; finish(my, compiled, jump); }
         };
-        worker.postMessage({ type: 'search', id: my.id, q: query, opts: opts, book: b.id, volumes: idx.volumes.map(function (m) { return m.v; }) });
+        worker.postMessage({ type: 'search', id: my.id, q: query, opts: opts, targets: list });
       }
       function finish(my, compiled, jump) {
-        // العبارة المتصلة أولاً، ثم بترتيب الكتاب
-        my.hits.sort(function (a, c) { return c[3] - a[3] || a[0] - c[0] || a[1] - c[1] || a[2] - c[2]; });
-        var nb = my.hits.filter(function (h) { return h[2] < 0; }).length, nn = my.hits.length - nb;
+        // العبارة المتصلة أولاً، ثم بترتيب الكتب
+        my.hits.sort(function (a, c) { return c[4] - a[4] || a[0] - c[0] || a[1] - c[1] || a[2] - c[2] || a[3] - c[3]; });
+        var nb = my.hits.filter(function (h) { return h[3] < 0; }).length, nn = my.hits.length - nb;
+        var books = {}; my.hits.forEach(function (h) { books[h[0]] = 1; });
+        var nbk = Object.keys(books).length;
         status(jump + (my.hits.length
-          ? '<p class="count"><b>' + fmt(my.hits.length) + '</b> نتيجة' + (compiled ? ' — ' + fmt(nb) + ' في المتن و' + fmt(nn) + ' في الحواشي' : '') + '</p>'
-          : '<div class="tips"><h3>لا نتائج' + (query ? ' لـ«' + escH(query) + '»' : '') + '</h3><ul><li>جرّب كلماتٍ أقل، أو وضع «أي كلمة».</li><li>ألغِ خيار «كلمة كاملة» أو تصفية الجزء والسند.</li></ul></div>'));
+          ? '<p class="count"><b>' + fmt(my.hits.length) + '</b> نتيجة' + (compiled ? ' — ' + fmt(nb) + ' في المتن و' + fmt(nn) + ' في الحواشي' : '') + (!b && nbk ? '، في ' + (nbk === 1 ? 'كتابٍ واحد' : nbk === 2 ? 'كتابين' : nbk + (nbk <= 10 ? ' كتب' : ' كتاباً')) : '') + '</p>'
+          : '<div class="tips"><h3>لا نتائج' + (query ? ' لـ«' + escH(query) + '»' : '') + '</h3><ul><li>جرّب كلماتٍ أقل، أو «أي كلمة».</li><li>ألغِ خيار «كلمة كاملة» أو تصفية الجزء والسند' + (b ? '، أو ابحث في جميع الكتب' : '') + '.</li></ul></div>'));
         $('#sList').innerHTML = ''; my.shown = 0;
         if (my.hits.length) more(my, compiled);
       }
       function more(my, compiled) {
         var slice = my.hits.slice(my.shown, my.shown + 30);
         my.shown += slice.length;
-        Promise.all(slice.map(function (h) { return loadVol(b.id, h[0]); })).then(function (vols) {
+        Promise.all(slice.map(function (h) { var id = BOOKS[h[0]].id; return Promise.all([loadVol(id, h[1]), loadIndex(id)]); })).then(function (res) {
           if (!alive || my !== state) return;
-          $('#sList').insertAdjacentHTML('beforeend', slice.map(function (h, k) { return resultHTML(h, vols[k], idx.volumes[h[0] - 1], compiled); }).join(''));
+          $('#sList').insertAdjacentHTML('beforeend', slice.map(function (h, k) { return resultHTML(h, res[k][0], res[k][1], compiled); }).join(''));
           $('#sMore').innerHTML = my.done && my.shown < my.hits.length ? '<button class="btn" id="moreBtn">المزيد (' + fmt(my.hits.length - my.shown) + ')</button>' : '';
           var mb = $('#moreBtn'); if (mb) mb.addEventListener('click', function () { more(my, compiled); });
         }).catch(fail);
@@ -1102,13 +1211,13 @@
       }
       function cutAt(text, e) {
         if (e >= text.length) return text.length;
-        var o = text.lastIndexOf('', e), c = text.lastIndexOf('', e);
+        var o = text.lastIndexOf('', e), c = text.lastIndexOf('', e);
         if (o > c) return o;
         var sp = text.lastIndexOf(' ', e); return sp > e - 30 ? sp : e;
       }
-      function resultHTML(h, vol, meta, compiled) {
-        var bi = h[1], ni = h[2], blk = vol.blocks[bi] || ['p', ''], sec = meta.sections[sectionOf(meta, bi)];
-        var href = '#/read/' + b.id + '/' + meta.v + '/' + sectionOf(meta, bi) + '/b' + bi + (compiled ? '?q=' + encodeURIComponent(query) + (opts.mode !== 'all' ? '&mode=' + opts.mode : '') + (opts.whole ? '&whole=1' : '') + (ni >= 0 ? '&n=' + ni : '') : '');
+      function resultHTML(h, vol, bidx, compiled) {
+        var bk = BOOKS[h[0]], meta = bidx.volumes[h[1] - 1], bi = h[2], ni = h[3], blk = vol.blocks[bi] || ['p', ''], sec = meta.sections[sectionOf(meta, bi)];
+        var href = '#/read/' + bk.id + '/' + meta.v + '/' + sectionOf(meta, bi) + '/b' + bi + (compiled ? '?q=' + encodeURIComponent(query) + (opts.mode !== 'all' ? '&mode=' + opts.mode : '') + (opts.whole ? '&whole=1' : '') + (ni >= 0 ? '&n=' + ni : '') : '');
         var hnum = blk[0] === 'h' ? blk[1] : 0;
         if (!hnum) for (var k = bi - 1; k >= 0 && k > bi - 12; k--) if (vol.blocks[k][0] === 'h') { hnum = vol.blocks[k][1]; break; }
         var kind = ni >= 0 ? 'حاشية' : { h: 'حديث', b: 'عنوان باب', k: 'عنوان', a: 'عنوان', s: 'عنوان', t: 'عنوان' }[blk[0]] || 'متن';
@@ -1122,8 +1231,9 @@
           body = '<p class="r-txt">' + ex2.pre + renderText(ex2.t, { ranges: ex2.r, notes: false }) + '</p>';
         }
         var g = blk[0] === 'h' && blk[5] && ni < 0 ? '<span class="grade g-' + blk[5] + '">' + escH(blk[4]) + '</span>' : '';
+        var path = [bidx.volumes.length > 1 ? meta.name : (b ? bk.title : ''), sec.k ? escH(sec.k) : '', sec.a ? escH(sec.a) : '', sec.n ? (sec.w || 'باب') + ' ' + sec.n : ''].filter(Boolean).join(' · ');
         return '<a class="result' + (ni >= 0 ? ' in-note' : '') + '" href="' + href + '"><header><span class="r-kind">' + kind + '</span>' + (hnum ? '<span class="hnum">' + hnum + '</span>' : '') + g +
-          '<span class="r-path">' + (idx.volumes.length > 1 ? meta.name : b.title) + (sec.k ? ' · ' + escH(sec.k) : '') + (sec.a ? ' · ' + escH(sec.a) : '') + (sec.n ? ' · ' + (sec.w || 'باب') + ' ' + sec.n : '') + '</span></header>' + body + '</a>';
+          '<span class="r-path">' + (b ? '' : '<b class="r-book">' + bk.title + '</b>' + (path ? ' · ' : '')) + path + '</span></header>' + body + '</a>';
       }
       run();
       if (!query) input.focus();
@@ -1164,8 +1274,8 @@
         '<section class="search-head"><div class="hero-pattern" aria-hidden="true"></div><div class="wrap">' +
           '<nav class="crumbs"><a href="#/index/rawi/' + b.id + '">فهرس الرواة</a><span>' + b.title + '</span></nav>' +
           '<h1 class="rawi-name">' + escH(name) + '</h1>' +
-          '<div class="book-actions"><a class="btn solid" href="#/search?rawi=' + encodeURIComponent(name) + (b.id === 'wasail' ? '' : '&book=' + b.id) + '">أحاديثه في الأسانيد (' + fmt(x.c) + ') ' + ICON.arrow + '</a>' +
-          '<a class="btn" style="background:transparent;color:var(--gold-soft);border-color:rgba(217,197,156,.4)" href="#/search?q=' + encodeURIComponent('"' + name + '"') + '&scope=notes' + (b.id === 'wasail' ? '' : '&book=' + b.id) + '">كل ذكرٍ له في الحواشي</a></div>' +
+          '<div class="book-actions"><a class="btn solid" href="#/search?rawi=' + encodeURIComponent(name) + '&book=' + b.id + '">أحاديثه في الأسانيد (' + fmt(x.c) + ') ' + ICON.arrow + '</a>' +
+          '<a class="btn" style="background:transparent;color:var(--gold-soft);border-color:rgba(217,197,156,.4)" href="#/search?q=' + encodeURIComponent('"' + name + '"') + '&scope=notes' + '&book=' + b.id + '">كل ذكرٍ له في الحواشي</a></div>' +
         '</div></section>' +
         (rel.length ? '<section class="wrap block rawi-rel"><header class="block-head"><h2>صيغ قريبة من الاسم</h2><p>قد تكون للراوي نفسه وقد يشترك فيها غيره، فلم تُدمج. اضغط صيغةً لفتح صفحتها.</p></header><div class="rel-chips">' +
           rel.map(function (y) { return '<a href="' + rawiHref(b, y.n) + '">' + escH(y.n) + '<b>' + fmt(y.c) + '</b></a>'; }).join('') + '</div></section>' : '') +
@@ -1238,7 +1348,7 @@
         var nf = f ? AR.norm(f) : '', items = list.filter(function (x) { return !nf || AR.norm(x.n).indexOf(nf) >= 0; });
         $('#idxN').innerHTML = '<p>' + fmt(items.length) + (isSrc ? ' مصدراً' : ' اسماً') + '</p>';
         $('#idxList').innerHTML = items.slice(0, 600).map(function (x) {
-          return '<a class="idx-item" href="' + (isSrc ? '#/search?src=' + encodeURIComponent(x.n) + (b.id === 'wasail' ? '' : '&book=' + b.id) : rawiHref(b, x.n)) + '"><span class="idx-n">' + escH(x.n) + '</span><span class="idx-bar"><i style="width:' + Math.max(2, Math.sqrt(x.c / max) * 100) + '%"></i></span><b>' + fmt(x.c) + '</b></a>';
+          return '<a class="idx-item" href="' + (isSrc ? '#/search?src=' + encodeURIComponent(x.n) + '&book=' + b.id : rawiHref(b, x.n)) + '"><span class="idx-n">' + escH(x.n) + '</span><span class="idx-bar"><i style="width:' + Math.max(2, Math.sqrt(x.c / max) * 100) + '%"></i></span><b>' + fmt(x.c) + '</b></a>';
         }).join('') || '<p class="hint">لا نتائج.</p>';
       }
       draw('');
@@ -1250,7 +1360,7 @@
   $('#topSearch').addEventListener('submit', function (e) {
     e.preventDefault(); var i = $('#topSearchInput'), v = i.value.trim(); if (!v) return;
     var m = location.hash.match(/^#\/(?:book|read|rawi|index\/\w+)\/(\w+)/), bk = m && bookOf(m[1]) ? m[1] : (parseHash().q.book || '');
-    location.hash = '#/search?q=' + encodeURIComponent(v) + (bk && bk !== 'wasail' ? '&book=' + bk : ''); i.value = ''; i.blur();
+    location.hash = searchHash(v, bk); i.value = ''; i.blur();
   });
   $('#themeBtn').addEventListener('click', function () {
     var order = ['light', 'sepia', 'dark']; settings.theme = order[(order.indexOf(settings.theme) + 1) % 3];

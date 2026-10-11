@@ -2,13 +2,23 @@
    يعيد مواضع النتائج فقط (جزء، كتلة، حاشية)؛ والصفحة تعرض النص من ملف الجزء. */
 importScripts('normalize.js');
 
-var vols = {};          // v → {nb: نصوص الكتل المطبَّعة, gr: أصناف الأحكام, nn: الحواشي المطبَّعة, owner: كتلة كل حاشية}
+var vols = {};          // كتاب/جزء → {nb: نصوص الكتل المطبَّعة, gr: أصناف الأحكام, nn: الحواشي المطبَّعة, owner: كتلة كل حاشية}
 var loading = {};
 var current = 0;
+// البحث في جميع الكتب يمرّ على ٧٨ جزءاً؛ يُبقى منها في الذاكرة ما دون الحدّ، والأقدم يُطرح (ويُعاد من ذاكرة المتصفح)
+var LIMIT = 45e6, used = 0, order = [];
+function remember(key, d) {
+  var size = 0, k;
+  for (k = 0; k < d.nb.length; k++) size += d.nb[k].length;
+  for (k = 0; k < d.nn.length; k++) size += d.nn[k].length;
+  d.size = size; vols[key] = d; order.push(key); used += size;
+  while (used > LIMIT && order.length > 1) { var old = order.shift(); used -= vols[old].size; delete vols[old]; }
+  return d;
+}
 
 function load(book, v) {
   var key = book + '/' + v;
-  if (vols[key]) return Promise.resolve(vols[key]);
+  if (vols[key]) { order.splice(order.indexOf(key), 1); order.push(key); return Promise.resolve(vols[key]); }
   if (loading[key]) return loading[key];
   loading[key] = fetch('../data/' + book + '/v' + v + '.json').then(function (r) {
     if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -24,8 +34,9 @@ function load(book, v) {
       while ((m = re.exec(t))) owner[+m[1]] = i;
     }
     var nn = d.notes.map(function (n) { return AR.norm(n); });
-    return (vols[key] = { nb: nb, gr: gr, nn: nn, owner: owner });
-  });
+    delete loading[key];
+    return remember(key, { nb: nb, gr: gr, nn: nn, owner: owner });
+  }, function (err) { delete loading[key]; throw err; });
   return loading[key];
 }
 
@@ -35,15 +46,17 @@ onmessage = function (e) {
   var id = current = msg.id, o = msg.opts;
   var c = AR.compile(msg.q, o);
   if (!c) { postMessage({ type: 'done', id: id }); return; }
-  var list = o.vol ? [o.vol] : msg.volumes;
+  // targets: [[كتاب، جزء]…] — كتابٌ واحد أو جميع الكتب
+  var list = msg.targets;
   var grade = o.grade || '';
   var inMatn = o.scope !== 'notes', inNotes = o.scope !== 'matn' && !grade;
   var i = 0;
   (function next() {
     if (id !== current) return;
     if (i >= list.length) { postMessage({ type: 'done', id: id }); return; }
-    var v = list[i++];
-    load(msg.book, v).then(function (d) {
+    var t = list[i++];
+    if (i < list.length) load(list[i][0], list[i][1]).catch(function () {});   // الجزء التالي يُجلب أثناء فحص هذا
+    load(t[0], t[1]).then(function (d) {
       if (id !== current) return;
       var hits = [], k, s;
       if (inMatn) for (k = 0; k < d.nb.length; k++) {
@@ -53,10 +66,10 @@ onmessage = function (e) {
       if (inNotes) for (k = 0; k < d.nn.length; k++) {
         if ((s = AR.score(c, d.nn[k]))) hits.push([d.owner[k], k, s]);
       }
-      postMessage({ type: 'hits', id: id, v: v, hits: hits, done: i, total: list.length });
+      postMessage({ type: 'hits', id: id, book: t[0], v: t[1], hits: hits, done: i, total: list.length });
       next();
     }).catch(function (err) {
-      postMessage({ type: 'error', id: id, v: v, message: String(err) });
+      postMessage({ type: 'error', id: id, book: t[0], v: t[1], message: String(err) });
       next();
     });
   })();
