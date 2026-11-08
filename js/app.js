@@ -110,7 +110,8 @@
   var DEFAULTS = { theme: 'light', size: 21, font: 'saad', tashkeel: true, notes: 'side' };
   var settings = Object.assign({}, DEFAULTS);
   try { Object.assign(settings, JSON.parse(localStorage.getItem('mahoozi.settings') || '{}')); } catch (e) { /* تخزين غير متاح */ }
-  var FONTS = [['saad', 'الخط الأول'], ['majalla', 'الخط الثاني'], ['lotus', 'الخط الثالث']];
+  var FONTS = [['saad', 'الخط الأول'], ['majalla', 'الخط الثاني'], ['abdo', 'الخط الثالث']];
+  if (settings.font === 'lotus') settings.font = 'abdo';                                       // الخط الثالث كان لوتس (حتى ٨ نوفمبر ٢٠٢٦)
   if (!FONTS.some(function (f) { return f[0] === settings.font; })) settings.font = 'saad';   // خطوط الإصدار السابق (أميري، نسخ)
   function saveSettings() { try { localStorage.setItem('mahoozi.settings', JSON.stringify(settings)); } catch (e) { /* يُتجاهل */ } }
   function getLast() { try { return JSON.parse(localStorage.getItem('mahoozi.last') || 'null'); } catch (e) { return null; } }

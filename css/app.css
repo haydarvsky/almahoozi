@@ -6,8 +6,8 @@
 @font-face { font-family: 'Sakkal Saad'; src: url(../assets/fonts/SakkalSaad-Bold.woff2) format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
 @font-face { font-family: 'Sakkal Majalla'; src: url(../assets/fonts/SakkalMajalla-Regular.woff2) format('woff2'); font-weight: 400; font-style: normal; font-display: swap; size-adjust: 112%; }
 @font-face { font-family: 'Sakkal Majalla'; src: url(../assets/fonts/SakkalMajalla-Bold.woff2) format('woff2'); font-weight: 700; font-style: normal; font-display: swap; size-adjust: 112%; }
-@font-face { font-family: 'Lotus'; src: url(../assets/fonts/Lotus-Light.woff2) format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
-@font-face { font-family: 'Lotus'; src: url(../assets/fonts/Lotus-Bold.woff2) format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Abdo Text'; src: url(../assets/fonts/AbdoText-Regular.woff2) format('woff2'); font-weight: 400; font-style: normal; font-display: swap; size-adjust: 110%; }   /* عبدو أضيق وأصغر على الجسم من صقال سعد؛ التكبير يوازي عرض سطره */
+@font-face { font-family: 'Abdo Text'; src: url(../assets/fonts/AbdoText-Bold.woff2) format('woff2'); font-weight: 700; font-style: normal; font-display: swap; size-adjust: 110%; }
 :root {
   --bg: #f6f1e6;
   --surface: #fffdf8;
@@ -41,7 +41,7 @@
   --g-s: #4cc493; --g-k: #5cc0d0; --g-h: #8ea6ee; --g-q: #e0ad52; --g-m: #b3c264; --g-r: #c0a78f; --g-d: #ef8375; --g-o: #9aa59f;
 }
 :root[data-font="majalla"] { --read-font: 'Sakkal Majalla', 'Sakkal Saad', serif; }
-:root[data-font="lotus"] { --read-font: 'Lotus', 'Sakkal Saad', serif; }   /* ما ينقص لوتس (– … والحروف اللاتينية) يُستعار من الخط الأول */
+:root[data-font="abdo"] { --read-font: 'Abdo Text', 'Sakkal Saad', serif; }   /* ما ينقص عبدو (الحروف اللاتينية وبعض علامات المصحف) يُستعار من الخط الأول */
 
 * { box-sizing: border-box; }
 html, body { overflow-x: clip; }
