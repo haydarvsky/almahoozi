@@ -42,6 +42,7 @@ function load(book, v) {
 
 onmessage = function (e) {
   var msg = e.data;
+  if (msg.type === 'cancel') { if (current === msg.id) current = 0; return; }   // غادر المستخدم صفحة البحث: لا تُحمَّل بقية الأجزاء
   if (msg.type !== 'search') return;
   var id = current = msg.id, o = msg.opts;
   var c = AR.compile(msg.q, o);

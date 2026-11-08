@@ -629,3 +629,31 @@ details[open] > summary .sh-chev::before { transform: translateY(2px) rotate(135
   .qs-row button { padding: 0 14px; }
   .hero .stat { flex-basis: 50%; }
 }
+
+/* ── بطاقات النتائج والمحفوظات: تُقرأ كاملةً وتُنسخ وتُحفظ في مكانها بلا مغادرة الصفحة ── */
+.result:hover { transform: none; }
+.result .r-txt, .result .r-ctx, .result header { cursor: pointer; }
+.result.open .r-txt, .result.open .r-ctx { display: none; }
+.r-full { margin: 6px 0 2px; font-family: var(--read-font); font-size: calc(var(--read-size) - 1px); line-height: 2.1; animation: rise .2s ease-out both; }
+.r-full .txt { text-align: justify; }
+.r-full .inl-notes { margin-top: 12px; }
+.r-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); }
+.r-act { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 9px; border: 1px solid transparent; background: none; color: var(--ink-2); font: 13.5px var(--ui-font); transition: background .15s, color .15s; }
+.r-act:hover { background: var(--surface-2); color: var(--primary); }
+:root[data-theme="dark"] .r-act:hover { color: var(--gold); }
+.r-act svg { width: 16px; height: 16px; transition: transform .2s; }
+.result.open .r-act[data-act="full"] svg { transform: rotate(180deg); }
+.r-act.go { margin-inline-start: auto; color: var(--primary); font-weight: 600; }
+:root[data-theme="dark"] .r-act.go { color: var(--gold); }
+.acts button.bm.on, .r-act.bm.on { color: var(--gold); }
+.bm.on svg path { fill: currentColor; }
+.count-pill { display: inline-grid; place-items: center; height: 42px; padding: 0 18px; border-radius: 12px; background: rgba(217, 197, 156, .14); color: #d9c59c; font-weight: 600; font-size: 14.5px; }
+.btn.hero, :root[data-theme="dark"] .btn.hero { background: transparent; color: #d9c59c; border-color: rgba(217, 197, 156, .4); }
+.bm-resume { flex: 1 1 200px; }
+/* إدراج القسم السابق فوق المتن: الكود يضبط التمرير بنفسه، فلا يتدخّل ثبيت التمرير في المتصفح */
+.reader { overflow-anchor: none; }
+@media (max-width: 860px) {
+  .nav a { font-size: 13px; padding: 8px 2px; }
+  .r-act.go { margin-inline-start: 0; flex-basis: 100%; justify-content: center; }
+}
+@media (max-width: 400px) { .nav a { font-size: 12px; } .r-act { padding: 0 9px; } }
